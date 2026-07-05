@@ -1,0 +1,464 @@
+================================================================================
+          PROJECT REPORT
+          TeleSync — AI Powered Telegram Social Media Automation Scheduler
+================================================================================
+
+Submitted By  : Siddharth
+Project Type  : Full-Stack Web Application (SaaS-style)
+Tech Stack    : MERN (MongoDB, Express, React, Node.js)
+Report Date   : June 2025
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+TeleSync is a SaaS-style social media automation platform that allows users to
+schedule and auto-publish posts to Telegram channels using AI-generated captions.
+It integrates Google Gemini AI for content generation, Telegram Bot API for
+message delivery, SMTP-based OTP email verification, and OAuth 2.0 login via
+Google and GitHub — all orchestrated through an automated cron-based scheduler.
+
+Problem Statement:
+  Managing social media content manually is time-consuming and inconsistent.
+  TeleSync solves this by allowing users to plan posts in advance, generate
+  AI-powered captions, and have them published automatically at the right time —
+  without any manual intervention.
+
+--------------------------------------------------------------------------------
+2. OBJECTIVES
+--------------------------------------------------------------------------------
+
+  - Build a secure JWT-authenticated multi-user platform
+  - Implement email OTP verification during registration
+  - Support OAuth 2.0 login via Google and GitHub
+  - Allow users to schedule Telegram posts with text and images
+  - Integrate Google Gemini AI to auto-generate engaging captions
+  - Automate post publishing using a background cron scheduler
+  - Provide a real-time dashboard to track post status
+  - Deliver a modern, responsive dark-mode UI
+
+================================================================================
+3. TECH STACK
+================================================================================
+
+  Layer          Technology               Version       Purpose
+  ----------     --------------------     -------       -------------------------
+  Frontend       React                    19.x          UI framework
+  Frontend       Vite                     8.x           Build tool & dev server
+  Frontend       Tailwind CSS             3.x           Utility-first styling
+  Frontend       React Router DOM         7.x           Client-side routing
+  Frontend       Axios                    1.x           HTTP client
+  Frontend       React Hot Toast          2.x           Toast notifications
+  Frontend       React Icons              5.x           Icon library
+  Backend        Node.js                  18+           Runtime environment
+  Backend        Express.js               4.x           REST API framework
+  Backend        Mongoose                 8.x           MongoDB ODM
+  Database       MongoDB                  6+            NoSQL database
+  Auth           JSON Web Tokens (JWT)    9.x           Stateless authentication
+  Auth           bcryptjs                 2.x           Password hashing
+  Auth           Passport.js              0.7.x         OAuth 2.0 middleware
+  Auth           passport-google-oauth20  2.x           Google OAuth strategy
+  Auth           passport-github2         0.1.x         GitHub OAuth strategy
+  Email          Nodemailer               6.x           SMTP OTP email sender
+  Session        express-session          1.x           OAuth session support
+  Scheduler      node-cron                3.x           Background task runner
+  Telegram       Telegram Bot API         -             Message publishing
+  AI             Google Gemini API        2.0-flash     Caption generation
+  Utilities      dotenv                   16.x          Environment config
+  Dev Tools      nodemon                  3.x           Auto-restart in dev
+
+================================================================================
+4. SYSTEM ARCHITECTURE
+================================================================================
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │                      CLIENT (React + Vite)                       │
+  │  Login  Register  VerifyOtp  OAuthSuccess  Dashboard  Posts      │
+  │                    Tailwind CSS Dark UI                          │
+  └────────────────────────┬─────────────────────────────────────────┘
+                           │ HTTP (via Vite Proxy /api)
+                           ▼
+  ┌──────────────────────────────────────────────────────────────────┐
+  │                EXPRESS.JS REST API  (Port 5000)                  │
+  │                                                                  │
+  │  /api/auth   → register, verifyOtp, resendOtp, login             │
+  │              → Google OAuth, GitHub OAuth                        │
+  │  /api/posts  → CRUD + stats                                      │
+  │  /api/ai     → Gemini caption generation                         │
+  │                                                                  │
+  │  Middleware: JWT Auth, Passport.js, express-session              │
+  └──────┬──────────────────┬──────────────────┬─────────────────────┘
+         │                  │                  │
+         ▼                  ▼                  ▼
+  ┌────────────┐  ┌──────────────────┐  ┌──────────────────────────┐
+  │  MongoDB   │  │ Background Cron  │  │   External APIs          │
+  │ (telesync) │  │ (every minute)   │  │                          │
+  │            │  │ → pending posts  │  │  Google OAuth API        │
+  │  users     │  │ → Telegram API   │  │  GitHub OAuth API        │
+  │  posts     │  │ → update status  │  │  Gemini AI API           │
+  └────────────┘  └──────────────────┘  │  Telegram Bot API        │
+                                        │  Gmail SMTP              │
+                                        └──────────────────────────┘
+
+================================================================================
+5. PROJECT FOLDER STRUCTURE
+================================================================================
+
+  Social_Media_Automation/
+  ├── server/                         Backend (Node.js + Express)
+  │   ├── config/
+  │   │   ├── db.js                   MongoDB connection
+  │   │   └── passport.js             Google + GitHub OAuth strategies
+  │   ├── controllers/
+  │   │   ├── authController.js       register, verifyOtp, resendOtp,
+  │   │   │                           login, getMe, oauthCallback
+  │   │   ├── postController.js       Post CRUD + Stats
+  │   │   └── aiController.js         Gemini caption handler
+  │   ├── middleware/
+  │   │   └── authMiddleware.js       JWT token verification
+  │   ├── models/
+  │   │   ├── User.js                 isVerified, otp, otpExpiry,
+  │   │   │                           authProvider, providerId, avatar
+  │   │   └── Post.js                 Post schema (status enum)
+  │   ├── routes/
+  │   │   ├── authRoutes.js           OTP + OAuth + local auth routes
+  │   │   ├── postRoutes.js
+  │   │   └── aiRoutes.js
+  │   ├── services/
+  │   │   ├── telegramService.js      sendMessage, sendImage
+  │   │   ├── geminiService.js        generateCaption (model fallback)
+  │   │   └── emailService.js         sendOtpEmail via Nodemailer
+  │   ├── scheduler/
+  │   │   └── postScheduler.js        node-cron every minute
+  │   ├── .env                        Environment variables
+  │   ├── .gitignore
+  │   └── server.js                   Entry point + passport init
+  │
+  └── client/                         Frontend (React + Vite)
+      ├── src/
+      │   ├── components/
+      │   │   ├── Navbar.jsx
+      │   │   ├── Sidebar.jsx
+      │   │   └── PostCard.jsx
+      │   ├── context/
+      │   │   └── AuthContext.jsx     login, register, verifyOtp,
+      │   │                           resendOtp, loginWithToken, logout
+      │   ├── pages/
+      │   │   ├── Login.jsx           Email login + OAuth buttons
+      │   │   ├── Register.jsx        Email register + OAuth buttons
+      │   │   ├── VerifyOtp.jsx       6-box OTP input + resend timer
+      │   │   ├── OAuthSuccess.jsx    OAuth redirect token handler
+      │   │   ├── Dashboard.jsx       Stats + recent posts
+      │   │   ├── CreatePost.jsx      AI caption + schedule form
+      │   │   └── Posts.jsx           Posts table + filter tabs
+      │   ├── routes/
+      │   │   └── ProtectedRoute.jsx
+      │   ├── services/
+      │   │   └── api.js              Axios + JWT interceptors
+      │   └── App.jsx                 All routes defined
+      ├── tailwind.config.js
+      └── vite.config.js              Proxy: /api → localhost:5000
+
+================================================================================
+6. DATABASE DESIGN
+================================================================================
+
+  Collection: users
+  ┌──────────────────┬───────────┬──────────────────────────────────────┐
+  │ Field            │ Type      │ Description                          │
+  ├──────────────────┼───────────┼──────────────────────────────────────┤
+  │ _id              │ ObjectId  │ Auto-generated primary key           │
+  │ name             │ String    │ User's full name                     │
+  │ email            │ String    │ Unique, lowercase                    │
+  │ password         │ String    │ bcrypt hashed, null for OAuth users  │
+  │ isVerified       │ Boolean   │ Email OTP verified (default: false)  │
+  │ otp              │ String    │ 6-digit OTP code (cleared after use) │
+  │ otpExpiry        │ Date      │ OTP expiry (10 minutes from send)    │
+  │ authProvider     │ Enum      │ local / google / github              │
+  │ providerId       │ String    │ OAuth provider user ID               │
+  │ avatar           │ String    │ Profile picture URL from OAuth       │
+  │ createdAt        │ Date      │ Auto timestamp                       │
+  │ updatedAt        │ Date      │ Auto timestamp                       │
+  └──────────────────┴───────────┴──────────────────────────────────────┘
+
+  Collection: posts
+  ┌──────────────────┬───────────┬──────────────────────────────────────┐
+  │ Field            │ Type      │ Description                          │
+  ├──────────────────┼───────────┼──────────────────────────────────────┤
+  │ _id              │ ObjectId  │ Auto-generated primary key           │
+  │ userId           │ ObjectId  │ Ref → users collection               │
+  │ content          │ String    │ Post text content                    │
+  │ imageUrl         │ String    │ Optional image URL                   │
+  │ scheduledTime    │ Date      │ When to publish                      │
+  │ status           │ Enum      │ pending / posted / failed            │
+  │ telegramMessageId│ String    │ Returned by Telegram API             │
+  │ errorMessage     │ String    │ Error details if failed              │
+  │ createdAt        │ Date      │ Auto timestamp                       │
+  │ updatedAt        │ Date      │ Auto timestamp                       │
+  └──────────────────┴───────────┴──────────────────────────────────────┘
+
+================================================================================
+7. API ENDPOINTS
+================================================================================
+
+  Authentication Routes (No Auth Required)
+  ─────────────────────────────────────────
+  POST   /api/auth/register            Register user, send OTP to email
+  POST   /api/auth/verify-otp          Verify OTP, returns JWT token
+  POST   /api/auth/resend-otp          Resend OTP to email
+  POST   /api/auth/login               Login with email + password
+  GET    /api/auth/google              Redirect to Google OAuth consent
+  GET    /api/auth/google/callback     Google OAuth callback → JWT redirect
+  GET    /api/auth/github              Redirect to GitHub OAuth consent
+  GET    /api/auth/github/callback     GitHub OAuth callback → JWT redirect
+
+  Auth Routes (JWT Required)
+  ──────────────────────────
+  GET    /api/auth/me                  Get logged-in user info
+
+  Post Routes (JWT Required)
+  ──────────────────────────
+  GET    /api/posts                    Get all posts for current user
+  GET    /api/posts/stats              Get post counts by status
+  POST   /api/posts/create             Create and schedule a new post
+  PUT    /api/posts/:id                Update a pending post
+  DELETE /api/posts/:id                Delete a post
+
+  AI Routes (JWT Required)
+  ────────────────────────
+  POST   /api/ai/generate-caption      Generate Telegram caption via Gemini
+
+  Health Check
+  ────────────
+  GET    /api/health                   Server status check
+
+================================================================================
+8. CORE FEATURES — DETAILED
+================================================================================
+
+  8.1 Email OTP Verification
+  ──────────────────────────
+  - User submits registration form (name, email, password)
+  - Backend creates unverified user, generates 6-digit OTP
+  - OTP hashed and stored with 10-minute expiry in MongoDB
+  - Nodemailer sends styled HTML email via Gmail SMTP
+  - Frontend redirects to /verify-otp page with email in state
+  - User enters 6-digit code in individual input boxes
+  - Supports paste, backspace navigation, and 60s resend timer
+  - On success: isVerified=true, otp cleared, JWT returned
+  - Unverified users attempting login are redirected to OTP page
+
+  8.2 OAuth 2.0 — Google & GitHub
+  ────────────────────────────────
+  - Login/Register pages show "Continue with Google" and "Continue with GitHub"
+  - Clicking redirects browser to /api/auth/google or /api/auth/github
+  - Passport.js handles OAuth flow with respective strategies
+  - On callback: user looked up by email in MongoDB
+    * If exists: provider linked, isVerified set to true
+    * If new: user created with avatar, provider info, isVerified=true
+  - JWT token generated and passed via redirect to /oauth-success
+  - OAuthSuccess page extracts token from URL, saves to localStorage
+  - User redirected to dashboard seamlessly
+
+  8.3 JWT Authentication
+  ──────────────────────
+  - JWT token expires in 7 days
+  - Token stored in localStorage
+  - Axios interceptor attaches Bearer token to every request
+  - Global 401 handler auto-redirects to login and clears storage
+  - Protected routes block unauthenticated access
+
+  8.4 Post Scheduling
+  ───────────────────
+  - User creates a post with content, optional image URL, schedule time
+  - Validation: schedule time must be in the future
+  - Post saved to MongoDB with status: "pending"
+  - node-cron runs every minute on the server
+  - Queries all pending posts where scheduledTime <= now
+  - Sends to Telegram (text or photo based on imageUrl)
+  - Updates status to "posted" with telegramMessageId
+  - On failure: status set to "failed" with errorMessage saved
+
+  8.5 AI Caption Generation
+  ─────────────────────────
+  - User enters a topic keyword
+  - Request sent to Google Gemini 2.0 Flash model
+  - Uses x-goog-api-key header (required for AQ. prefix keys)
+  - Prompt engineered for Telegram format:
+      * Emoji-rich opening line
+      * 2-3 engaging sentences
+      * 5-7 relevant hashtags
+      * Call to action
+  - Falls back to gemini-2.0-flash-lite on 429/503 errors
+  - Generated caption auto-fills the post textarea
+
+  8.6 Telegram Integration
+  ────────────────────────
+  - sendMessage: plain text posts via /sendMessage
+  - sendImage: photo posts via /sendPhoto with caption
+  - HTML parse_mode enabled for formatting
+  - Bot must be Admin of the target channel
+  - Errors captured and stored per post in errorMessage field
+
+  8.7 Dashboard & Posts Management
+  ─────────────────────────────────
+  - 4 stat cards: Total, Scheduled, Published, Failed
+  - Recent 5 posts preview table on dashboard
+  - Full posts table with filter tabs: All / Pending / Posted / Failed
+  - Delete any post, refresh button, post count display
+
+================================================================================
+9. SECURITY MEASURES
+================================================================================
+
+  - Passwords never stored in plaintext (bcrypt, salt: 10)
+  - Email must be OTP-verified before login allowed
+  - OAuth users auto-verified (trusted provider)
+  - JWT tokens expire after 7 days
+  - All post/AI routes protected by authMiddleware
+  - Posts scoped to userId (users cannot access others' posts)
+  - .env file gitignored — credentials never committed
+  - CORS restricted to known frontend origins only
+  - OTP expires in 10 minutes, cleared after use
+  - Input validation on all API endpoints
+
+================================================================================
+10. ENVIRONMENT VARIABLES
+================================================================================
+
+  Variable               Description
+  ─────────────────────  ──────────────────────────────────────────────────────
+  PORT                   Express server port (default: 5000)
+  MONGO_URI              MongoDB connection string
+  JWT_SECRET             Secret key for signing JWT tokens
+  CLIENT_URL             Frontend URL for OAuth redirects
+  TELEGRAM_BOT_TOKEN     Bot token from @BotFather
+  TELEGRAM_CHANNEL_ID    Target channel (@name or numeric ID)
+  GEMINI_API_KEY         Google AI Studio API key (AQ. prefix)
+  SMTP_HOST              SMTP server host (smtp.gmail.com)
+  SMTP_PORT              SMTP port (587)
+  SMTP_USER              Gmail address for sending OTP
+  SMTP_PASS              Gmail App Password (16 characters)
+  GOOGLE_CLIENT_ID       Google OAuth 2.0 Client ID
+  GOOGLE_CLIENT_SECRET   Google OAuth 2.0 Client Secret
+  GITHUB_CLIENT_ID       GitHub OAuth App Client ID
+  GITHUB_CLIENT_SECRET   GitHub OAuth App Client Secret
+
+================================================================================
+11. INSTALLATION & SETUP
+================================================================================
+
+  Prerequisites:
+    - Node.js v18+
+    - MongoDB (local or Atlas)
+    - Telegram Bot Token (from @BotFather)
+    - Google Gemini API Key (from aistudio.google.com)
+    - Gmail App Password (for SMTP OTP)
+    - Google OAuth credentials (console.cloud.google.com)
+    - GitHub OAuth credentials (github.com/settings/developers)
+
+  Step 1: Clone repository
+    git clone <repo-url>
+    cd Social_Media_Automation
+
+  Step 2: Setup backend
+    cd server
+    npm install
+    cp .env.example .env
+    # Fill in all values in .env
+    npm run dev
+
+  Step 3: Setup frontend
+    cd client
+    npm install
+    npm run dev
+
+  Step 4: Open browser
+    http://localhost:5173
+
+  Google OAuth Setup:
+    - Authorized JavaScript Origins: http://localhost:5173
+    - Authorized JavaScript Origins: http://localhost:5000
+    - Authorized Redirect URI: http://localhost:5000/api/auth/google/callback
+
+  GitHub OAuth Setup:
+    - Homepage URL: http://localhost:5173
+    - Authorization callback URL: http://localhost:5000/api/auth/github/callback
+
+================================================================================
+12. CHALLENGES FACED & SOLUTIONS
+================================================================================
+
+  Challenge 1: CORS errors on API calls
+  → Fixed by adding Vite proxy (/api → localhost:5000)
+    and changing axios baseURL from hardcoded to relative /api
+
+  Challenge 2: Gemini API model not found (1.5-flash unavailable)
+  → Queried available models via ListModels API
+    Updated to use gemini-2.0-flash and gemini-2.0-flash-lite
+
+  Challenge 3: Gemini API key format (AQ. prefix vs AIzaSy)
+  → AQ. keys require x-goog-api-key header instead of ?key= query param
+    Updated service to use header-based authentication
+
+  Challenge 4: MongoDB not installed on Ubuntu 25.04
+  → Official MongoDB repo uses noble (24.04) packages
+    Recommended MongoDB Atlas as cloud alternative
+
+  Challenge 5: Telegram posting to bot instead of channel
+  → TELEGRAM_CHANNEL_ID was set to bot username
+    Must be set to actual channel username (@channel)
+    Bot must be added as Admin to that channel
+
+  Challenge 6: node-cron not publishing scheduled posts
+  → Root cause was invalid TELEGRAM_CHANNEL_ID
+    Scheduler itself was working correctly (verified via logs)
+
+  Challenge 7: Google OAuth — invalid origin error
+  → Authorized JavaScript Origins must not contain paths
+    Correct: http://localhost:5173 (no trailing slash, no path)
+
+  Challenge 8: GitHub OAuth — wrong Homepage URL
+  → Homepage URL must be frontend URL (http://localhost:5173)
+    Not the callback URL
+
+================================================================================
+13. FUTURE IMPROVEMENTS
+================================================================================
+
+  - [ ] Multiple Telegram channel support per user
+  - [ ] Rich text / HTML formatting editor (WYSIWYG)
+  - [ ] Post analytics: views, engagement tracking
+  - [ ] Recurring/repeating post schedules
+  - [ ] Cloud file upload (AWS S3 / Cloudinary) for media
+  - [ ] Team collaboration with roles and permissions
+  - [ ] Webhook integration for real-time delivery status
+  - [ ] Email notifications on post success/failure
+  - [ ] Post preview before scheduling
+  - [ ] Mobile app (React Native)
+  - [ ] Support for other platforms (WhatsApp, Discord)
+  - [ ] Two-factor authentication (2FA)
+  - [ ] Password reset via email
+
+================================================================================
+14. CONCLUSION
+================================================================================
+
+  TeleSync successfully demonstrates a production-grade full-stack MERN
+  application with:
+
+  - Secure JWT authentication with email OTP verification
+  - OAuth 2.0 social login via Google and GitHub (Passport.js)
+  - Real-time background scheduling with node-cron
+  - Third-party AI integration (Google Gemini 2.0 Flash)
+  - Telegram Bot API for automated post publishing
+  - Clean, modular MVC backend architecture
+  - Responsive, dark-mode React frontend with Tailwind CSS
+
+  The project covers modern full-stack development practices including
+  third-party API integration, background job processing, secure authentication
+  flows, and a polished SaaS-style user interface.
+
+================================================================================
+                              END OF REPORT
+================================================================================
