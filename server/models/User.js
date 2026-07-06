@@ -10,11 +10,20 @@ const userSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   otp: { type: String, default: null },
   otpExpiry: { type: Date, default: null },
+  otpResendCount: { type: Number, default: 0 },
+  otpResendWindowStart: { type: Date, default: null },
 
   // OAuth
   authProvider: { type: String, enum: ['local', 'google', 'github'], default: 'local' },
   providerId: { type: String, default: null },
   avatar: { type: String, default: null },
+
+  // Refresh tokens (array supports multiple devices)
+  refreshTokens: { type: [String], default: [] },
+
+  // Password reset
+  resetPasswordToken: { type: String, default: null },
+  resetPasswordExpiry: { type: Date, default: null },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

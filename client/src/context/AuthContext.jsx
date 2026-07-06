@@ -11,11 +11,11 @@ export const AuthProvider = ({ children }) => {
 
   const saveUser = (data) => {
     localStorage.setItem('token', data.token);
+    localStorage.setItem('refreshToken', data.refreshToken);
     localStorage.setItem('user', JSON.stringify(data));
     setUser(data);
   };
 
-  // Returns email — frontend redirects to /verify-otp
   const register = async (name, email, password) => {
     const { data } = await api.post('/auth/register', { name, email, password });
     return data;
@@ -38,19 +38,36 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  // Called after OAuth redirect
   const loginWithToken = (data) => {
     saveUser(data);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      await api.post('/auth/logout', { refreshToken });
+    } catch { /* ignore */ }
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setUser(null);
   };
 
+  const forgotPassword = async (email) => {
+    const { data } = await api.post('/auth/forgot-password', { email });
+    return data;
+  };
+
+  const resetPassword = async (email, token, password) => {
+    const { data } = await api.post('/auth/reset-password', { email, token, password });
+    return data;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, verifyOtp, resendOtp, loginWithToken, logout }}>
+    <AuthContext.Provider value={{
+      user, login, register, verifyOtp, resendOtp,
+      loginWithToken, logout, forgotPassword, resetPassword,
+    }}>
       {children}
     </AuthContext.Provider>
   );

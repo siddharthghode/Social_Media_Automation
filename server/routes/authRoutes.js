@@ -1,15 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('../config/passport');
-const { register, verifyOtp, resendOtp, login, getMe, oauthCallback } = require('../controllers/authController');
+const {
+  register, verifyOtp, resendOtp, login,
+  refreshToken, logout,
+  forgotPassword, resetPassword,
+  getMe, oauthCallback,
+} = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
+const { loginLimiter, registerLimiter, forgotPasswordLimiter } = require('../middleware/rateLimiter');
 
 // Local auth
-router.post('/register', register);
+router.post('/register', registerLimiter, register);
 router.post('/verify-otp', verifyOtp);
 router.post('/resend-otp', resendOtp);
-router.post('/login', login);
+router.post('/login', loginLimiter, login);
+router.post('/refresh', refreshToken);
+router.post('/logout', logout);
 router.get('/me', protect, getMe);
+
+// Password reset
+router.post('/forgot-password', forgotPasswordLimiter, forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // Google OAuth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
