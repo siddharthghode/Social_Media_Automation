@@ -12,9 +12,13 @@ const userSchema = new mongoose.Schema({
   otpExpiry: { type: Date, default: null },
 
   // OAuth
-  authProvider: { type: String, enum: ['local', 'google', 'github'], default: 'local' },
+  authProvider: { type: String, enum: ['local', 'google', 'github', 'facebook'], default: 'local' },
   providerId: { type: String, default: null },
   avatar: { type: String, default: null },
+
+  // Zernio Profile
+  zeroProfileId: { type: String, default: null },
+  zernioProfileId: { type: String, default: null },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

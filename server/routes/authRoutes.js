@@ -25,4 +25,11 @@ router.get('/github/callback',
   oauthCallback
 );
 
+// Facebook OAuth
+router.get('/facebook', passport.authenticate('facebook', { scope: ['email', 'pages_show_list', 'pages_manage_posts', 'pages_read_engagement'] }));
+router.get('/facebook/callback',
+  passport.authenticate('facebook', { failureRedirect: `${process.env.CLIENT_URL}/login?error=facebook_failed`, session: false }),
+  oauthCallback
+);
+
 module.exports = router;

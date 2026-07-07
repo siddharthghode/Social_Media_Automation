@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { FiSend, FiUser, FiMail, FiLock } from 'react-icons/fi';
+import { FiSend, FiUser, FiMail, FiLock, FiFacebook } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { FiGithub } from 'react-icons/fi';
 
@@ -54,6 +54,12 @@ const Register = () => {
               className="flex items-center justify-center gap-3 w-full border border-dark-600 hover:border-dark-500 hover:bg-dark-700 text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
             >
               <FiGithub size={18} /> Continue with GitHub
+            </a>
+            <a
+              href="http://localhost:5000/api/auth/facebook"
+              className="flex items-center justify-center gap-3 w-full border border-dark-600 hover:border-dark-500 hover:bg-dark-700 text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
+            >
+              <FiFacebook size={18} className="text-blue-500" /> Continue with Facebook
             </a>
           </div>
 

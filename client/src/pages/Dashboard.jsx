@@ -24,7 +24,7 @@ const statusStyles = {
 };
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({ total: 0, pending: 0, posted: 0, failed: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, posted: 0, failed: 0, connectedAccounts: 0 });
   const [recentPosts, setRecentPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,10 +47,10 @@ const Dashboard = () => {
   }, []);
 
   const statCards = [
-    { icon: <FiFileText className="text-blue-400 text-xl" />, label: 'Total Posts', value: stats.total, color: 'bg-blue-500/20' },
-    { icon: <FiClock className="text-yellow-400 text-xl" />, label: 'Scheduled', value: stats.pending, color: 'bg-yellow-500/20' },
-    { icon: <FiCheckCircle className="text-green-400 text-xl" />, label: 'Published', value: stats.posted, color: 'bg-green-500/20' },
-    { icon: <FiXCircle className="text-red-400 text-xl" />, label: 'Failed', value: stats.failed, color: 'bg-red-500/20' },
+    { icon: <FiClock className="text-yellow-400 text-xl" />, label: 'Scheduled Posts', value: stats.pending, color: 'bg-yellow-500/20' },
+    { icon: <FiCheckCircle className="text-green-400 text-xl" />, label: 'Published Posts', value: stats.posted, color: 'bg-green-500/20' },
+    { icon: <FiFileText className="text-blue-400 text-xl" />, label: 'Connected Accounts', value: stats.connectedAccounts || 0, color: 'bg-blue-500/20' },
+    { icon: <FiXCircle className="text-red-400 text-xl" />, label: 'Failed Posts', value: stats.failed, color: 'bg-red-500/20' },
   ];
 
   return (

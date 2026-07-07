@@ -1,13 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  FiHome, FiPlusSquare, FiList, FiLogOut, FiSend,
+  FiHome, FiUsers, FiCalendar, FiZap, FiLogOut, FiSend,
 } from 'react-icons/fi';
 
 const navItems = [
   { to: '/dashboard', icon: <FiHome />, label: 'Dashboard' },
-  { to: '/create', icon: <FiPlusSquare />, label: 'Create Post' },
-  { to: '/posts', icon: <FiList />, label: 'My Posts' },
+  { to: '/accounts', icon: <FiUsers />, label: 'Accounts' },
+  { to: '/schedule', icon: <FiCalendar />, label: 'Scheduler' },
+  { to: '/ai-composer', icon: <FiZap />, label: 'AI Composer' },
 ];
 
 const Sidebar = () => {
@@ -25,9 +26,9 @@ const Sidebar = () => {
       <div className="p-6 border-b border-dark-700">
         <div className="flex items-center gap-2">
           <FiSend className="text-blue-400 text-xl" />
-          <span className="text-xl font-bold text-white">TeleSync</span>
+          <span className="text-xl font-bold text-white">Social Scheduler</span>
         </div>
-        <p className="text-xs text-gray-400 mt-1">AI Telegram Scheduler</p>
+        <p className="text-xs text-gray-400 mt-1">Multi-Platform Automation</p>
       </div>
 
       {/* Nav Links */}

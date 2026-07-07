@@ -9,6 +9,7 @@ const { startScheduler } = require('./scheduler/postScheduler');
 const authRoutes = require('./routes/authRoutes');
 const postRoutes = require('./routes/postRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const socialAuthRoutes = require('./routes/socialAuthRoutes');
 
 const app = express();
 
@@ -32,6 +33,8 @@ app.use(passport.session());
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/social', socialAuthRoutes);
+app.use('/api/oaths', socialAuthRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
 

@@ -2,21 +2,21 @@ const axios = require('axios');
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// Only models confirmed available for this key
 const MODELS = [
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
   'gemini-2.5-flash',
 ];
 
-const generateCaption = async (topic) => {
-  const prompt = `You are a social media expert. Generate a creative, engaging Telegram post caption for the topic: "${topic}".
+const generateCaption = async (topic, tone = 'professional') => {
+  const prompt = `You are a social media expert. Generate a social media post caption on the topic: "${topic}".
+Use a ${tone} tone of voice.
 Include:
 - An attention-grabbing opening with emoji
-- 2-3 sentences of compelling content
+- 2-3 sentences of compelling, relevant content
 - Relevant hashtags (5-7)
-- Call to action
-Keep it under 200 words. Format it nicely for Telegram.`;
+- A call to action
+Keep it under 200 words. Format it nicely with line breaks.`;
 
   let lastError;
 
@@ -51,4 +51,36 @@ Keep it under 200 words. Format it nicely for Telegram.`;
   throw new Error(msg || 'Gemini API request failed');
 };
 
-module.exports = { generateCaption };
+const generateImagePrompt = async (topic) => {
+  const prompt = `Based on the following topic for a social media post, suggest a few visual search keywords to find a matching stock image.
+Topic: "${topic}"
+Output ONLY 2 or 3 keywords separated by commas (e.g. "code, programming, nextjs"). Do not include any other text or description.`;
+
+  let lastError;
+
+  for (const model of MODELS) {
+    try {
+      const response = await axios.post(
+        `${BASE}/${model}:generateContent`,
+        { contents: [{ parts: [{ text: prompt }] }] },
+        {
+          headers: {
+            'x-goog-api-key': process.env.GEMINI_API_KEY,
+            'Content-Type': 'application/json',
+          },
+          timeout: 15000,
+        }
+      );
+      return response.data.candidates[0].content.parts[0].text;
+    } catch (err) {
+      lastError = err;
+      const status = err.response?.status;
+      if (status !== 429 && status !== 503) break;
+      console.warn(`[Gemini] ${model} returned ${status}, trying next model...`);
+    }
+  }
+
+  return 'workspace,coding';
+};
+
+module.exports = { generateCaption, generateImagePrompt };

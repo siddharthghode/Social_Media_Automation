@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const axios = require('axios');
 const User = require('../models/User');
+const Account = require('../models/Account');
 const { sendOtpEmail } = require('../services/emailService');
 
 const generateToken = (id) =>
@@ -118,11 +120,57 @@ const getMe = async (req, res) => {
   res.json(req.user);
 };
 
-// GET /api/auth/google/callback & /api/auth/github/callback
-const oauthCallback = (req, res) => {
-  const token = generateToken(req.user._id);
-  // Redirect to frontend with token in query param
-  res.redirect(`${process.env.CLIENT_URL}/oauth-success?token=${token}&name=${encodeURIComponent(req.user.name)}&email=${encodeURIComponent(req.user.email)}`);
+// GET /api/auth/google/callback & /api/auth/github/callback & /api/auth/facebook/callback
+const oauthCallback = async (req, res) => {
+  // req.user is either a User doc (google/github) or { user, accessToken, fbUserId, fbName } (facebook)
+  const userData = req.user;
+  const user = userData.user || userData;
+  const token = generateToken(user._id);
+
+  // If Facebook — fetch pages and save as connected account
+  if (userData.accessToken && userData.fbUserId) {
+    try {
+      const pagesRes = await axios.get(
+        `https://graph.facebook.com/v19.0/me/accounts?access_token=${userData.accessToken}`
+      );
+      const pages = pagesRes.data?.data || [];
+      for (const page of pages) {
+        await Account.findOneAndUpdate(
+          { userId: user._id, platform: 'facebook', handle: page.name },
+          {
+            userId: user._id,
+            platform: 'facebook',
+            handle: page.name,
+            zeroAccountId: page.id,
+            accessToken: page.access_token,
+            status: 'connected',
+            avatarUrl: `https://graph.facebook.com/${page.id}/picture?type=square`,
+          },
+          { upsert: true, new: true }
+        );
+      }
+      // If no pages, save the user profile itself
+      if (pages.length === 0) {
+        await Account.findOneAndUpdate(
+          { userId: user._id, platform: 'facebook', zeroAccountId: userData.fbUserId },
+          {
+            userId: user._id,
+            platform: 'facebook',
+            handle: userData.fbName || 'facebook_user',
+            zeroAccountId: userData.fbUserId,
+            accessToken: userData.accessToken,
+            status: 'connected',
+            avatarUrl: `https://graph.facebook.com/${userData.fbUserId}/picture?type=square`,
+          },
+          { upsert: true, new: true }
+        );
+      }
+    } catch (err) {
+      console.error('[Facebook] Failed to fetch pages:', err.message);
+    }
+  }
+
+  res.redirect(`${process.env.CLIENT_URL}/oauth-success?token=${token}&name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`);
 };
 
 module.exports = { register, verifyOtp, resendOtp, login, getMe, oauthCallback };
