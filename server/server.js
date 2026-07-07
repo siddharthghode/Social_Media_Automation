@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const { RedisStore } = require('connect-redis');
+const redis = require('./config/redis');
 const passport = require('./config/passport');
 const connectDB = require('./config/db');
 const { startScheduler } = require('./scheduler/postScheduler');
@@ -15,14 +17,24 @@ const app = express();
 
 connectDB();
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:3000',
+  'http://localhost:80',
+  'http://localhost',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());
 
 // Session required for passport OAuth (session: false in callbacks, but needed for strategy init)
 app.use(session({
+  store: new RedisStore({ client: redis }),
   secret: process.env.JWT_SECRET,
   resave: false,
   saveUninitialized: false,
