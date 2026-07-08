@@ -1,0 +1,11 @@
+django>=4.2
+djangorestframework
+djangorestframework-simplejwt
+psycopg2-binary
+django-cors-headers
+python-dotenv
+bcrypt
+requests
+pyjwt
+celery>=5.3.0
+redis>=5.0.0

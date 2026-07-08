@@ -9,8 +9,9 @@ import OAuthSuccess from './pages/OAuthSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
-import CreatePost from './pages/CreatePost';
-import Posts from './pages/Posts';
+import Accounts from './pages/Accounts';
+import Scheduler from './pages/Scheduler';
+import AIComposer from './pages/AIComposer';
 
 function App() {
   return (
@@ -32,8 +33,13 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/create" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
-          <Route path="/posts" element={<ProtectedRoute><Posts /></ProtectedRoute>} />
+          <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
+          <Route path="/schedule" element={<ProtectedRoute><Scheduler /></ProtectedRoute>} />
+          <Route path="/ai-composer" element={<ProtectedRoute><AIComposer /></ProtectedRoute>} />
+          
+          {/* Legacy redirects */}
+          <Route path="/create" element={<Navigate to="/schedule" replace />} />
+          <Route path="/posts" element={<Navigate to="/schedule" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
