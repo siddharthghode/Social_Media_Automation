@@ -46,6 +46,84 @@ def _pick_image(keywords):
     return DEFAULT_IMAGE
 
 
+def _generate_mock_caption(topic, tone):
+    topic_lower = topic.lower()
+
+    if 'consistency' in topic_lower or 'motivational' in topic_lower or 'motivation' in topic_lower or 'achieve' in topic_lower or 'try new' in topic_lower:
+        title = "✨ Stay Consistent, Stay Ahead! ✨"
+        body = (
+            "Consistency is the magic ingredient that turns temporary tries into lifelong success. "
+            "When trying new things in life, progress isn't about being perfect; it's about showing up day after day. "
+            "Every step forward, no matter how small, counts towards your growth!"
+        )
+        hashtags = "#Consistency #Motivation #GrowthMindset #NewBeginnings #Inspiration"
+        cta = "👉 What is one new thing you're committing to today? Drop it in the comments!"
+    elif 'code' in topic_lower or 'program' in topic_lower or 'react' in topic_lower or 'nextjs' in topic_lower or 'tech' in topic_lower:
+        title = "🚀 Embracing the Dev Journey! 🚀"
+        body = (
+            "Building high-quality applications requires patience, practice, and the courage to try new frameworks. "
+            "Whether you are mastering React, Next.js, or diving into Python backend development, "
+            "remember that every bug you squash is a step closer to mastery."
+        )
+        hashtags = "#WebDev #CodingTips #ReactJS #Python #SoftwareEngineering"
+        cta = "👉 What framework or language are you learning next? Let us know!"
+    else:
+        title = "💡 Fresh Perspectives & Growth 💡"
+        body = (
+            f"Here is your daily dose of inspiration about: {topic}. "
+            "Exploring new paths and ideas is essential for expanding our horizons. "
+            "Step out of your comfort zone, try something new today, and watch how it transforms your journey!"
+        )
+        hashtags = "#Inspiration #Perspective #StepOut #Innovation #DailyDose"
+        cta = "👉 Share your thoughts on this topic below!"
+
+    t = tone.lower()
+    if t == 'funny':
+        caption = (
+            f"🤖 [AI Mock - Funny Tone]\n\n"
+            f"{title}\n\n"
+            f"Rumor has it that {body.lower()} Or maybe we're just trying to convince ourselves it works. "
+            f"Either way, do the thing!\n\n"
+            f"{hashtags} #Humor\n\n"
+            f"{cta}"
+        )
+    elif t == 'minimalist':
+        caption = (
+            f"{title}\n\n"
+            f"Consistency > Intensity.\n"
+            f"Try new things. Learn. Repeat.\n\n"
+            f"{hashtags}"
+        )
+    elif t == 'excited':
+        caption = (
+            f"🔥 [AI Mock - EXCITED!] 🔥\n\n"
+            f"{title.upper()}\n\n"
+            f"OH MY GOD! {body} This is absolutely game-changing! 💥 "
+            f"Let's crush our goals and conquer the week together! Let's gooooo!\n\n"
+            f"{hashtags} #LetGo #CrushingIt\n\n"
+            f"{cta}"
+        )
+    elif t == 'creative':
+        caption = (
+            f"🎨 [AI Mock - Creative Space] 🎨\n\n"
+            f"{title}\n\n"
+            f"Imagine a canvas where {body.lower()} Every choice you make adds a new splash of color to your life. "
+            f"Create, experiment, and keep moving forward.\n\n"
+            f"{hashtags} #CreativeJourney\n\n"
+            f"{cta}"
+        )
+    else:
+        caption = (
+            f"💼 [AI Mock - Professional Profile]\n\n"
+            f"{title}\n\n"
+            f"{body}\n\n"
+            f"{hashtags}\n\n"
+            f"{cta}"
+        )
+
+    return caption
+
+
 # POST /api/ai/generate-caption  and  POST /api/ai/generate-post
 @api_view(['POST'])
 def generate_caption(request):
@@ -64,7 +142,8 @@ def generate_caption(request):
     try:
         caption = _gemini_generate(caption_prompt)
     except Exception as e:
-        return Response({'message': f'AI generation failed: {e}'}, status=500)
+        print(f"[AI] Gemini API failed or not configured, using fallback generator. Info: {e}")
+        caption = _generate_mock_caption(topic, tone)
 
     media_url = None
     if generate_image:

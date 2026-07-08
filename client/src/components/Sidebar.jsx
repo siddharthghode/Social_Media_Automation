@@ -1,11 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  FiHome, FiPlusSquare, FiList, FiLogOut, FiSend,
+  FiHome, FiPlusSquare, FiList, FiLogOut, FiSend, FiUsers, FiCalendar, FiZap,
 } from 'react-icons/fi';
 
 const navItems = [
   { to: '/dashboard', icon: <FiHome />, label: 'Dashboard' },
+  { to: '/accounts', icon: <FiUsers />, label: 'Accounts' },
+  { to: '/schedule', icon: <FiCalendar />, label: 'Scheduler' },
+  { to: '/ai-composer', icon: <FiZap />, label: 'AI Composer' },
   { to: '/create', icon: <FiPlusSquare />, label: 'Create Post' },
   { to: '/posts', icon: <FiList />, label: 'My Posts' },
 ];

@@ -2,9 +2,6 @@ import time
 import django
 import os
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'telesync.settings')
-django.setup()
-
 import requests
 from datetime import datetime, timezone
 from django.conf import settings
@@ -198,3 +195,10 @@ class Command(BaseCommand):
             except Exception as e:
                 self.stderr.write(f'[Scheduler] Error: {e}')
             time.sleep(60)
+
+
+if __name__ == '__main__':
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'telesync.settings')
+    import django
+    django.setup()
+    run_scheduler()
