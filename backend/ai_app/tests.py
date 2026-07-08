@@ -125,3 +125,39 @@ class AIGeneratePostTestCase(TestCase):
             content_type="application/json"
         )
         self.assertEqual(response.status_code, 403)
+
+    @patch("requests.post")
+    def test_generate_prompts_success(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {"text": '[\"Prompt A\", \"Prompt B\", \"Prompt C\", \"Prompt D\"]'}
+                        ]
+                    }
+                }
+            ]
+        }
+        mock_post.return_value = mock_response
+
+        response = self.client.post(
+            "/api/ai/generate-prompts",
+            data={"theme": "technology"},
+            content_type="application/json",
+            **self.headers
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["prompts"]), 4)
+        self.assertEqual(response.json()["prompts"][0], "Prompt A")
+
+    def test_generate_prompts_unauthenticated(self):
+        response = self.client.post(
+            "/api/ai/generate-prompts",
+            data={"theme": "technology"},
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 403)

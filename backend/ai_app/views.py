@@ -1,3 +1,4 @@
+import json
 import requests
 from django.conf import settings
 from rest_framework.decorators import api_view
@@ -79,3 +80,51 @@ def generate_caption(request):
             media_url = DEFAULT_IMAGE
 
     return Response({'caption': caption, 'mediaUrl': media_url})
+
+
+# POST /api/ai/generate-prompts
+@api_view(['POST'])
+def generate_prompts(request):
+    theme = request.data.get('theme', '')
+    prompt_text = (
+        "You are an expert social media manager. Generate a list of 4 creative, engaging prompts or post ideas for a social media channel.\n"
+    )
+    if theme:
+        prompt_text += f"The user specified the theme/industry: '{theme}'. Please tailor the prompts to this theme.\n"
+    else:
+        prompt_text += "Generate trending general prompts covering technology, career, lifestyle, or business.\n"
+
+    prompt_text += (
+        "Each prompt should be a clear, actionable instruction for an AI post writer, e.g., 'Write a post sharing 3 tips for learning React in 2026'.\n"
+        "Return the response ONLY as a JSON list/array of strings. Format:\n"
+        "[\n"
+        "  \"prompt 1\",\n"
+        "  \"prompt 2\",\n"
+        "  \"prompt 3\",\n"
+        "  \"prompt 4\"\n"
+        "]\n"
+        "Do not include any other commentary or markdown formatting. Output raw JSON."
+    )
+
+    try:
+        raw_res = _gemini_generate(prompt_text)
+        cleaned = raw_res.strip()
+        if cleaned.startswith('```'):
+            lines = cleaned.split('\n')
+            if lines[0].startswith('```'):
+                lines = lines[1:]
+            if lines and lines[-1].startswith('```'):
+                lines = lines[:-1]
+            cleaned = '\n'.join(lines).strip()
+        prompts = json.loads(cleaned)
+        if not isinstance(prompts, list):
+            raise ValueError("Response is not a list")
+    except Exception:
+        prompts = [
+            f"Write a post sharing 3 actionable tips about {theme or 'productivity'}",
+            f"Describe the biggest challenges in {theme or 'software development'} and how to overcome them",
+            f"Create a motivational post about achieving consistency in {theme or 'learning new skills'}",
+            f"Share a story about a recent breakthrough or lesson learned in {theme or 'our industry'}"
+        ]
+
+    return Response({'prompts': prompts})

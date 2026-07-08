@@ -38,6 +38,27 @@ const AIComposer = () => {
   const [loading, setLoading] = useState(false);
   const [generations, setGenerations] = useState([]);
   
+  // Prompt Ideas Generator
+  const [promptTheme, setPromptTheme] = useState('');
+  const [generatedPrompts, setGeneratedPrompts] = useState([]);
+  const [promptsLoading, setPromptsLoading] = useState(false);
+
+  const handleGeneratePromptIdeas = async () => {
+    setPromptsLoading(true);
+    try {
+      const { data } = await api.post('/ai/generate-prompts', {
+        theme: promptTheme,
+      });
+      setGeneratedPrompts(data.prompts);
+      toast.success('Generated post ideas!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate post ideas');
+    } finally {
+      setPromptsLoading(false);
+    }
+  };
+
   // Scheduling Modal
   const [activeGeneration, setActiveGeneration] = useState(null);
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
@@ -154,6 +175,57 @@ const AIComposer = () => {
       <div className="flex-1 flex flex-col">
         <Navbar title="AI Composer" />
         <main className="flex-1 p-6 space-y-6">
+
+          {/* Brainstorming & Post Ideas Card */}
+          <div className="bg-dark-800 border border-dark-700 rounded-xl p-6 max-w-3xl mx-auto space-y-5">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <FiZap className="text-yellow-500 animate-bounce" /> Need Inspiration?
+            </h2>
+            <p className="text-sm text-gray-400">
+              Enter a theme, keyword, or industry to generate creative prompt ideas for your posts.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="e.g. coding tips, fitness lifestyle, culinary recipes, finance tips..."
+                value={promptTheme}
+                onChange={(e) => setPromptTheme(e.target.value)}
+                className="flex-1 bg-dark-700 border border-dark-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+              />
+              <button
+                type="button"
+                onClick={handleGeneratePromptIdeas}
+                disabled={promptsLoading}
+                className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-all duration-200 shadow-md shadow-yellow-600/10 flex items-center justify-center gap-2"
+              >
+                <FiZap size={16} />
+                {promptsLoading ? 'Generating...' : 'Get Prompt Ideas'}
+              </button>
+            </div>
+
+            {generatedPrompts.length > 0 && (
+              <div className="space-y-3 pt-3 border-t border-dark-700/50">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Click an idea to load it into the post creator:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {generatedPrompts.map((pText, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setPrompt(pText);
+                        toast.success('Prompt loaded!');
+                      }}
+                      className="text-left bg-dark-700 hover:bg-dark-650 border border-dark-600 hover:border-yellow-500/50 rounded-xl p-4 text-xs sm:text-sm text-gray-300 hover:text-white transition-all duration-200 shadow-sm leading-relaxed cursor-pointer"
+                    >
+                      💡 {pText}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           
           {/* Main generator card */}
           <div className="bg-dark-800 border border-dark-700 rounded-xl p-6 max-w-3xl mx-auto space-y-5">
