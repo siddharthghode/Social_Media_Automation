@@ -1,11 +1,11 @@
 ================================================================================
           PROJECT REPORT
-          TeleSync — AI Powered Telegram Social Media Automation Scheduler
+          TeleSync — AI Powered Social Media Automation Scheduler
 ================================================================================
 
 Submitted By  : Siddharth
 Project Type  : Full-Stack Web Application (SaaS-style)
-Tech Stack    : MERN (MongoDB, Express, React, Node.js)
+Tech Stack    : Django + React + PostgreSQL
 Report Date   : June 2025
 
 ================================================================================
@@ -13,16 +13,17 @@ Report Date   : June 2025
 ================================================================================
 
 TeleSync is a SaaS-style social media automation platform that allows users to
-schedule and auto-publish posts to Telegram channels using AI-generated captions.
-It integrates Google Gemini AI for content generation, Telegram Bot API for
-message delivery, SMTP-based OTP email verification, and OAuth 2.0 login via
-Google and GitHub — all orchestrated through an automated cron-based scheduler.
+schedule and auto-publish posts to multiple social platforms (Telegram channels,
+Facebook Pages, and LinkedIn) using AI-generated captions. It integrates Google 
+Gemini AI for content generation, external social platform APIs for message 
+delivery, SMTP-based OTP email verification, and OAuth 2.0 login via Google 
+and GitHub — all orchestrated through a custom background loop scheduler.
 
 Problem Statement:
   Managing social media content manually is time-consuming and inconsistent.
   TeleSync solves this by allowing users to plan posts in advance, generate
-  AI-powered captions, and have them published automatically at the right time —
-  without any manual intervention.
+  AI-powered captions, and have them published automatically at the right time
+  across different social media networks — without any manual intervention.
 
 --------------------------------------------------------------------------------
 2. OBJECTIVES
@@ -31,10 +32,11 @@ Problem Statement:
   - Build a secure JWT-authenticated multi-user platform
   - Implement email OTP verification during registration
   - Support OAuth 2.0 login via Google and GitHub
-  - Allow users to schedule Telegram posts with text and images
+  - Allow users to connect social accounts (Telegram, Facebook, LinkedIn)
+  - Allow users to schedule posts with text and images
   - Integrate Google Gemini AI to auto-generate engaging captions
-  - Automate post publishing using a background cron scheduler
-  - Provide a real-time dashboard to track post status
+  - Automate post publishing using a background task scheduler
+  - Provide a real-time dashboard to track post status and connected channels
   - Deliver a modern, responsive dark-mode UI
 
 ================================================================================
@@ -50,22 +52,19 @@ Problem Statement:
   Frontend       Axios                    1.x           HTTP client
   Frontend       React Hot Toast          2.x           Toast notifications
   Frontend       React Icons              5.x           Icon library
-  Backend        Node.js                  18+           Runtime environment
-  Backend        Express.js               4.x           REST API framework
-  Backend        Mongoose                 8.x           MongoDB ODM
-  Database       MongoDB                  6+            NoSQL database
-  Auth           JSON Web Tokens (JWT)    9.x           Stateless authentication
-  Auth           bcryptjs                 2.x           Password hashing
-  Auth           Passport.js              0.7.x         OAuth 2.0 middleware
-  Auth           passport-google-oauth20  2.x           Google OAuth strategy
-  Auth           passport-github2         0.1.x         GitHub OAuth strategy
-  Email          Nodemailer               6.x           SMTP OTP email sender
-  Session        express-session          1.x           OAuth session support
-  Scheduler      node-cron                3.x           Background task runner
+  Backend        Python                   3.10+         Runtime environment
+  Backend        Django                   4.2+          Web framework
+  Backend        Django REST Framework    3.14+         REST API toolkit
+  Database       PostgreSQL               15+           Relational SQL database
+  Auth           Simple JWT (JWT)         5.x           Stateless authentication
+  Auth           bcrypt                   4.x           Password hashing
+  Auth           Custom OAuth (Views)     -             OAuth 2.0 flow logic
+  Email          Django SMTP Engine       -             SMTP OTP email sender
+  Scheduler      Custom Django Command    -             Background loop scheduler
   Telegram       Telegram Bot API         -             Message publishing
   AI             Google Gemini API        2.0-flash     Caption generation
-  Utilities      dotenv                   16.x          Environment config
-  Dev Tools      nodemon                  3.x           Auto-restart in dev
+  Utilities      python-dotenv            1.x           Environment config
+  Dev Tools      django-cors-headers      3.x           CORS headers middleware
 
 ================================================================================
 4. SYSTEM ARCHITECTURE
@@ -73,128 +72,145 @@ Problem Statement:
 
   ┌──────────────────────────────────────────────────────────────────┐
   │                      CLIENT (React + Vite)                       │
-  │  Login  Register  VerifyOtp  OAuthSuccess  Dashboard  Posts      │
-  │                    Tailwind CSS Dark UI                          │
+  │  Login  Register  VerifyOtp  OAuthSuccess  Dashboard  Scheduler  │
+  │  AIComposer   Accounts     Tailwind CSS Dark UI                  │
   └────────────────────────┬─────────────────────────────────────────┘
                            │ HTTP (via Vite Proxy /api)
                            ▼
   ┌──────────────────────────────────────────────────────────────────┐
-  │                EXPRESS.JS REST API  (Port 5000)                  │
+  │                DJANGO REST FRAMEWORK (Port 8000)                 │
   │                                                                  │
-  │  /api/auth   → register, verifyOtp, resendOtp, login             │
-  │              → Google OAuth, GitHub OAuth                        │
-  │  /api/posts  → CRUD + stats                                      │
-  │  /api/ai     → Gemini caption generation                         │
+  │  /api/auth/  → register, verify-otp, resend-otp, login, me       │
+  │              → Google OAuth, GitHub OAuth callback               │
+  │  /api/posts/ → CRUD + stats                                      │
+  │  /api/ai/    → Gemini caption generation & prompts               │
+  │  /api/social/→ Accounts connection / sync (LinkedIn, FB, TG)    │
   │                                                                  │
-  │  Middleware: JWT Auth, Passport.js, express-session              │
+  │  Middleware: Simple JWT Authentication, django-cors-headers      │
   └──────┬──────────────────┬──────────────────┬─────────────────────┘
          │                  │                  │
          ▼                  ▼                  ▼
   ┌────────────┐  ┌──────────────────┐  ┌──────────────────────────┐
-  │  MongoDB   │  │ Background Cron  │  │   External APIs          │
-  │ (telesync) │  │ (every minute)   │  │                          │
+  │ PostgreSQL │  │ Django Command   │  │   External APIs          │
+  │ (telesync) │  │ (run_scheduler)  │  │                          │
   │            │  │ → pending posts  │  │  Google OAuth API        │
   │  users     │  │ → Telegram API   │  │  GitHub OAuth API        │
-  │  posts     │  │ → update status  │  │  Gemini AI API           │
-  └────────────┘  └──────────────────┘  │  Telegram Bot API        │
-                                        │  Gmail SMTP              │
-                                        └──────────────────────────┘
+  │  posts     │  │ → Facebook API   │  │  LinkedIn & Facebook API │
+  │  accounts  │  │ → LinkedIn API   │  │  Gemini AI API           │
+  │            │  │                  │  │  Telegram Bot API        │
+  │            │  │                  │  │  Gmail SMTP              │
+  └────────────┘  └──────────────────┘  └──────────────────────────┘
 
 ================================================================================
 5. PROJECT FOLDER STRUCTURE
 ================================================================================
 
   Social_Media_Automation/
-  ├── server/                         Backend (Node.js + Express)
-  │   ├── config/
-  │   │   ├── db.js                   MongoDB connection
-  │   │   └── passport.js             Google + GitHub OAuth strategies
-  │   ├── controllers/
-  │   │   ├── authController.js       register, verifyOtp, resendOtp,
-  │   │   │                           login, getMe, oauthCallback
-  │   │   ├── postController.js       Post CRUD + Stats
-  │   │   └── aiController.js         Gemini caption handler
-  │   ├── middleware/
-  │   │   └── authMiddleware.js       JWT token verification
-  │   ├── models/
-  │   │   ├── User.js                 isVerified, otp, otpExpiry,
-  │   │   │                           authProvider, providerId, avatar
-  │   │   └── Post.js                 Post schema (status enum)
-  │   ├── routes/
-  │   │   ├── authRoutes.js           OTP + OAuth + local auth routes
-  │   │   ├── postRoutes.js
-  │   │   └── aiRoutes.js
-  │   ├── services/
-  │   │   ├── telegramService.js      sendMessage, sendImage
-  │   │   ├── geminiService.js        generateCaption (model fallback)
-  │   │   └── emailService.js         sendOtpEmail via Nodemailer
-  │   ├── scheduler/
-  │   │   └── postScheduler.js        node-cron every minute
-  │   ├── .env                        Environment variables
-  │   ├── .gitignore
-  │   └── server.js                   Entry point + passport init
+  ├── backend/                        Backend (Python + Django)
+  │   ├── telesync/                   Project settings and configuration
+  │   │   ├── settings.py             Django settings (DB, Auth, APIs, SMTP)
+  │   │   ├── urls.py                 Main API routing config
+  │   │   └── wsgi.py / asgi.py       Deployment entry points
+  │   ├── auth_app/                   Authentication and Account app
+  │   │   ├── authentication.py       Custom JWT Authentication logic
+  │   │   ├── models.py               User & Account (connected social accounts) models
+  │   │   ├── urls.py                 OTP + JWT local auth routes
+  │   │   ├── social_urls.py          Social OAuth connection / disconnect routes
+  │   │   ├── views.py                Auth logic (Register, Login, OTP verification)
+  │   │   └── social_views.py         Social integration views (LinkedIn, Facebook, etc.)
+  │   ├── posts/                      Posts scheduler and publishing app
+  │   │   ├── models.py               Post model (content, schedule, status, platforms)
+  │   │   ├── urls.py                 Post CRUD + Stats paths
+  │   │   ├── views.py                Post CRUD view actions
+  │   │   └── management/commands/    Custom Django CLI Commands
+  │   │       └── run_scheduler.py    Checks pending posts every minute & publishes
+  │   ├── ai_app/                     Gemini AI integration app
+  │   │   ├── urls.py                 AI generation endpoints
+  │   │   └── views.py                Gemini client connection and prompt generation
+  │   ├── requirements.txt            Python dependencies (Django, simplejwt, requests, bcrypt)
+  │   └── .env                        Environment variables
   │
   └── client/                         Frontend (React + Vite)
       ├── src/
       │   ├── components/
-      │   │   ├── Navbar.jsx
-      │   │   ├── Sidebar.jsx
-      │   │   └── PostCard.jsx
+      │   │   ├── Navbar.jsx          Top navigation bar
+      │   │   ├── Sidebar.jsx         Side navigation drawer
+      │   │   └── PostCard.jsx        Card layout for posts
       │   ├── context/
-      │   │   └── AuthContext.jsx     login, register, verifyOtp,
-      │   │                           resendOtp, loginWithToken, logout
+      │   │   └── AuthContext.jsx     login, register, verifyOtp, logout
       │   ├── pages/
       │   │   ├── Login.jsx           Email login + OAuth buttons
       │   │   ├── Register.jsx        Email register + OAuth buttons
       │   │   ├── VerifyOtp.jsx       6-box OTP input + resend timer
       │   │   ├── OAuthSuccess.jsx    OAuth redirect token handler
-      │   │   ├── Dashboard.jsx       Stats + recent posts
-      │   │   ├── CreatePost.jsx      AI caption + schedule form
-      │   │   └── Posts.jsx           Posts table + filter tabs
+      │   │   ├── Dashboard.jsx       Stats + recent posts preview
+      │   │   ├── Accounts.jsx        Social media connection portal
+      │   │   ├── Scheduler.jsx       Post list, filter, calendar view
+      │   │   └── AIComposer.jsx      AI post composer with Gemini templates
       │   ├── routes/
-      │   │   └── ProtectedRoute.jsx
+      │   │   └── ProtectedRoute.jsx  Route protector verifying auth state
       │   ├── services/
-      │   │   └── api.js              Axios + JWT interceptors
-      │   └── App.jsx                 All routes defined
-      ├── tailwind.config.js
-      └── vite.config.js              Proxy: /api → localhost:5000
+      │   │   └── api.js              Axios config with JWT interceptor
+      │   └── App.jsx                 All client-side routing defined
+      ├── tailwind.config.js          Tailwind style setup
+      └── vite.config.js              Proxy: /api → http://localhost:8000
 
 ================================================================================
 6. DATABASE DESIGN
 ================================================================================
 
-  Collection: users
+  Table: users
   ┌──────────────────┬───────────┬──────────────────────────────────────┐
-  │ Field            │ Type      │ Description                          │
+  │ Column           │ Type      │ Description                          │
   ├──────────────────┼───────────┼──────────────────────────────────────┤
-  │ _id              │ ObjectId  │ Auto-generated primary key           │
-  │ name             │ String    │ User's full name                     │
-  │ email            │ String    │ Unique, lowercase                    │
-  │ password         │ String    │ bcrypt hashed, null for OAuth users  │
-  │ isVerified       │ Boolean   │ Email OTP verified (default: false)  │
-  │ otp              │ String    │ 6-digit OTP code (cleared after use) │
-  │ otpExpiry        │ Date      │ OTP expiry (10 minutes from send)    │
-  │ authProvider     │ Enum      │ local / google / github              │
-  │ providerId       │ String    │ OAuth provider user ID               │
-  │ avatar           │ String    │ Profile picture URL from OAuth       │
-  │ createdAt        │ Date      │ Auto timestamp                       │
-  │ updatedAt        │ Date      │ Auto timestamp                       │
+  │ id               │ Integer   │ Primary Key (Auto-Increment)         │
+  │ name             │ Varchar   │ User's full name                     │
+  │ email            │ Varchar   │ Unique, lowercase                    │
+  │ password         │ Varchar   │ bcrypt hashed, null for OAuth users  │
+  │ is_verified      │ Boolean   │ Email OTP verified (default: false)  │
+  │ otp              │ Varchar   │ 6-digit OTP code (cleared after use) │
+  │ otp_expiry       │ DateTime  │ OTP expiry (10 minutes from send)    │
+  │ auth_provider    │ Choice    │ local / google / github              │
+  │ provider_id      │ Varchar   │ OAuth provider user ID               │
+  │ avatar           │ Text      │ Profile picture URL from OAuth       │
+  │ created_at       │ DateTime  │ Auto timestamp on creation           │
   └──────────────────┴───────────┴──────────────────────────────────────┘
 
-  Collection: posts
+  Table: accounts
   ┌──────────────────┬───────────┬──────────────────────────────────────┐
-  │ Field            │ Type      │ Description                          │
+  │ Column           │ Type      │ Description                          │
   ├──────────────────┼───────────┼──────────────────────────────────────┤
-  │ _id              │ ObjectId  │ Auto-generated primary key           │
-  │ userId           │ ObjectId  │ Ref → users collection               │
-  │ content          │ String    │ Post text content                    │
-  │ imageUrl         │ String    │ Optional image URL                   │
-  │ scheduledTime    │ Date      │ When to publish                      │
-  │ status           │ Enum      │ pending / posted / failed            │
-  │ telegramMessageId│ String    │ Returned by Telegram API             │
-  │ errorMessage     │ String    │ Error details if failed              │
-  │ createdAt        │ Date      │ Auto timestamp                       │
-  │ updatedAt        │ Date      │ Auto timestamp                       │
+  │ id               │ Integer   │ Primary Key (Auto-Increment)         │
+  │ user_id          │ Integer   │ ForeignKey → users.id (CASCADE)      │
+  │ platform         │ Varchar   │ Social platform name (e.g. telegram) │
+  │ handle           │ Varchar   │ Profile handle / name                │
+  │ zero_account_id  │ Varchar   │ Unique platform account identifier   │
+  │ access_token     │ Text      │ API Access token                     │
+  │ refresh_token    │ Text      │ API Refresh token                    │
+  │ token_expires_at │ DateTime  │ Access token expiry timestamp        │
+  │ status           │ Choice    │ connected / disconnected             │
+  │ avatar_url       │ Text      │ Profile picture URL from platform    │
+  │ created_at       │ DateTime  │ Auto timestamp on creation           │
+  └──────────────────┴───────────┴──────────────────────────────────────┘
+
+  Table: posts
+  ┌──────────────────┬───────────┬──────────────────────────────────────┐
+  │ Column           │ Type      │ Description                          │
+  ├──────────────────┼───────────┼──────────────────────────────────────┤
+  │ id               │ Integer   │ Primary Key (Auto-Increment)         │
+  │ user_id          │ Integer   │ ForeignKey → users.id (CASCADE)      │
+  │ content          │ Text      │ Post text content                    │
+  │ image_url        │ Text      │ Optional image URL                   │
+  │ media_url        │ Text      │ Optional media URL                   │
+  │ media_type       │ Varchar   │ Optional media type                  │
+  │ scheduled_time   │ DateTime  │ Date/time when post is scheduled     │
+  │ platforms        │ JSONB     │ List of scheduled platform targets   │
+  │ platform         │ Varchar   │ Single target platform (deprecated)  │
+  │ status           │ Choice    │ pending / posted / failed            │
+  │ telegram_msg_id  │ Varchar   │ Published Telegram message ID        │
+  │ error_message    │ Text      │ Error details if publishing failed   │
+  │ updated_at       │ DateTime  │ Auto-updated timestamp               │
+  │ created_at       │ DateTime  │ Auto timestamp on creation           │
   └──────────────────┴───────────┴──────────────────────────────────────┘
 
 ================================================================================
@@ -207,9 +223,9 @@ Problem Statement:
   POST   /api/auth/verify-otp          Verify OTP, returns JWT token
   POST   /api/auth/resend-otp          Resend OTP to email
   POST   /api/auth/login               Login with email + password
-  GET    /api/auth/google              Redirect to Google OAuth consent
+  GET    /api/auth/google              Redirect/Link to Google OAuth consent
   GET    /api/auth/google/callback     Google OAuth callback → JWT redirect
-  GET    /api/auth/github              Redirect to GitHub OAuth consent
+  GET    /api/auth/github              Redirect/Link to GitHub OAuth consent
   GET    /api/auth/github/callback     GitHub OAuth callback → JWT redirect
 
   Auth Routes (JWT Required)
@@ -221,12 +237,24 @@ Problem Statement:
   GET    /api/posts                    Get all posts for current user
   GET    /api/posts/stats              Get post counts by status
   POST   /api/posts/create             Create and schedule a new post
-  PUT    /api/posts/:id                Update a pending post
-  DELETE /api/posts/:id                Delete a post
+  GET    /api/posts/<post_id>          Retrieve details of a post
+  PUT    /api/posts/<post_id>          Update a pending post
+  DELETE /api/posts/<post_id>          Delete a post
 
   AI Routes (JWT Required)
   ────────────────────────
   POST   /api/ai/generate-caption      Generate Telegram caption via Gemini
+  POST   /api/ai/generate-post         Generate post caption via Gemini
+  POST   /api/ai/generate-prompts      Generate dynamic prompts
+
+  Social Accounts (JWT Required)
+  ──────────────────────────────
+  GET    /api/social/accounts          Get all connected social profiles
+  POST   /api/social/accounts/sync     Sync profile status & information
+  POST   /api/social/accounts/telegram/connect  Link Telegram bot access
+  DELETE /api/social/accounts/<id>     Disconnect social platform profile
+  GET    /api/social/auth/url/<plat>   Generate OAuth URL for LinkedIn/Instagram
+  GET    /api/social/auth/callback/<p> Callback handler for OAuth redirects
 
   Health Check
   ────────────
@@ -240,22 +268,22 @@ Problem Statement:
   ──────────────────────────
   - User submits registration form (name, email, password)
   - Backend creates unverified user, generates 6-digit OTP
-  - OTP hashed and stored with 10-minute expiry in MongoDB
-  - Nodemailer sends styled HTML email via Gmail SMTP
+  - OTP stored with 10-minute expiry in user record in database
+  - Django Mail engine sends styled HTML email via Gmail SMTP
   - Frontend redirects to /verify-otp page with email in state
   - User enters 6-digit code in individual input boxes
   - Supports paste, backspace navigation, and 60s resend timer
-  - On success: isVerified=true, otp cleared, JWT returned
+  - On success: is_verified=true, otp cleared, JWT returned
   - Unverified users attempting login are redirected to OTP page
 
   8.2 OAuth 2.0 — Google & GitHub
   ────────────────────────────────
   - Login/Register pages show "Continue with Google" and "Continue with GitHub"
   - Clicking redirects browser to /api/auth/google or /api/auth/github
-  - Passport.js handles OAuth flow with respective strategies
-  - On callback: user looked up by email in MongoDB
-    * If exists: provider linked, isVerified set to true
-    * If new: user created with avatar, provider info, isVerified=true
+  - Django custom views handle OAuth redirection and token exchange flow
+  - On callback: user looked up by email in PostgreSQL database
+    * If exists: provider linked, is_verified set to true
+    * If new: user created with avatar, provider info, is_verified=true
   - JWT token generated and passed via redirect to /oauth-success
   - OAuthSuccess page extracts token from URL, saves to localStorage
   - User redirected to dashboard seamlessly
@@ -270,21 +298,21 @@ Problem Statement:
 
   8.4 Post Scheduling
   ───────────────────
-  - User creates a post with content, optional image URL, schedule time
+  - User creates a post with content, optional image URL, schedule time, and platforms
   - Validation: schedule time must be in the future
-  - Post saved to MongoDB with status: "pending"
-  - node-cron runs every minute on the server
-  - Queries all pending posts where scheduledTime <= now
-  - Sends to Telegram (text or photo based on imageUrl)
-  - Updates status to "posted" with telegramMessageId
-  - On failure: status set to "failed" with errorMessage saved
+  - Post saved to PostgreSQL with status: "pending"
+  - Django run_scheduler custom command runs in a background loop every minute
+  - Queries all pending posts where scheduled_time <= now
+  - Publishes to Telegram, Facebook, or LinkedIn depending on target platforms
+  - Updates status to "posted" (or partial failure if some platforms failed)
+  - On failure: status set to "failed" with error_message saved
 
   8.5 AI Caption Generation
   ─────────────────────────
-  - User enters a topic keyword
+  - User enters a topic keyword or selects a template prompt
   - Request sent to Google Gemini 2.0 Flash model
   - Uses x-goog-api-key header (required for AQ. prefix keys)
-  - Prompt engineered for Telegram format:
+  - Prompt engineered for Telegram/Social formats:
       * Emoji-rich opening line
       * 2-3 engaging sentences
       * 5-7 relevant hashtags
@@ -298,27 +326,28 @@ Problem Statement:
   - sendImage: photo posts via /sendPhoto with caption
   - HTML parse_mode enabled for formatting
   - Bot must be Admin of the target channel
-  - Errors captured and stored per post in errorMessage field
+  - Errors captured and stored per post in error_message field
 
   8.7 Dashboard & Posts Management
   ─────────────────────────────────
   - 4 stat cards: Total, Scheduled, Published, Failed
   - Recent 5 posts preview table on dashboard
-  - Full posts table with filter tabs: All / Pending / Posted / Failed
+  - Full posts list (Scheduler page) with filter tabs: All / Pending / Posted / Failed
+  - Connected account management via Accounts page
   - Delete any post, refresh button, post count display
 
 ================================================================================
 9. SECURITY MEASURES
 ================================================================================
 
-  - Passwords never stored in plaintext (bcrypt, salt: 10)
+  - Passwords never stored in plaintext (bcrypt hashing)
   - Email must be OTP-verified before login allowed
   - OAuth users auto-verified (trusted provider)
   - JWT tokens expire after 7 days
-  - All post/AI routes protected by authMiddleware
-  - Posts scoped to userId (users cannot access others' posts)
+  - All post/AI/social routes protected by JWTAuthentication handler
+  - Posts scoped to user_id (users cannot access others' posts)
   - .env file gitignored — credentials never committed
-  - CORS restricted to known frontend origins only
+  - CORS restricted/allowed via django-cors-headers configurations
   - OTP expires in 10 minutes, cleared after use
   - Input validation on all API endpoints
 
@@ -328,29 +357,38 @@ Problem Statement:
 
   Variable               Description
   ─────────────────────  ──────────────────────────────────────────────────────
-  PORT                   Express server port (default: 5000)
-  MONGO_URI              MongoDB connection string
-  JWT_SECRET             Secret key for signing JWT tokens
-  CLIENT_URL             Frontend URL for OAuth redirects
-  TELEGRAM_BOT_TOKEN     Bot token from @BotFather
-  TELEGRAM_CHANNEL_ID    Target channel (@name or numeric ID)
+  BACKEND_URL            Django backend server URL (default: http://localhost:8000)
+  CLIENT_URL             Frontend client URL for OAuth redirects (http://localhost:5173)
+  POSTGRES_DB            PostgreSQL database name
+  POSTGRES_USER          PostgreSQL database username
+  POSTGRES_PASSWORD      PostgreSQL database password
+  POSTGRES_HOST          PostgreSQL database host
+  POSTGRES_PORT          PostgreSQL database port (default: 5432)
+  JWT_SECRET             Secret key for signing Simple JWT tokens
+  DJANGO_SECRET_KEY      Django internal cryptographic secret key
+  TELEGRAM_BOT_TOKEN     Telegram bot access token from @BotFather
+  TELEGRAM_CHANNEL_ID    Default fallback Telegram channel username / ID
   GEMINI_API_KEY         Google AI Studio API key (AQ. prefix)
-  SMTP_HOST              SMTP server host (smtp.gmail.com)
-  SMTP_PORT              SMTP port (587)
-  SMTP_USER              Gmail address for sending OTP
+  SMTP_HOST              SMTP mail server host (smtp.gmail.com)
+  SMTP_PORT              SMTP mail server port (587)
+  SMTP_USE_TLS           Whether to use TLS/SSL encryption for SMTP (True/False)
+  SMTP_USER              Gmail address for sending verification OTPs
   SMTP_PASS              Gmail App Password (16 characters)
   GOOGLE_CLIENT_ID       Google OAuth 2.0 Client ID
   GOOGLE_CLIENT_SECRET   Google OAuth 2.0 Client Secret
   GITHUB_CLIENT_ID       GitHub OAuth App Client ID
   GITHUB_CLIENT_SECRET   GitHub OAuth App Client Secret
+  FACEBOOK_CLIENT_ID     Facebook Developer App Client ID
+  FACEBOOK_CLIENT_SECRET Facebook Developer App Client Secret
 
 ================================================================================
 11. INSTALLATION & SETUP
 ================================================================================
 
   Prerequisites:
+    - Python 3.10+
+    - PostgreSQL
     - Node.js v18+
-    - MongoDB (local or Atlas)
     - Telegram Bot Token (from @BotFather)
     - Google Gemini API Key (from aistudio.google.com)
     - Gmail App Password (for SMTP OTP)
@@ -362,11 +400,14 @@ Problem Statement:
     cd Social_Media_Automation
 
   Step 2: Setup backend
-    cd server
-    npm install
-    cp .env.example .env
-    # Fill in all values in .env
-    npm run dev
+    cd backend
+    python -m venv backend_env
+    source backend_env/bin/activate
+    pip install -r requirements.txt
+    python manage.py migrate
+    # Create or update .env file with your PostgreSQL and API credentials
+    python manage.py runserver &
+    python manage.py run_scheduler &
 
   Step 3: Setup frontend
     cd client
@@ -378,20 +419,20 @@ Problem Statement:
 
   Google OAuth Setup:
     - Authorized JavaScript Origins: http://localhost:5173
-    - Authorized JavaScript Origins: http://localhost:5000
-    - Authorized Redirect URI: http://localhost:5000/api/auth/google/callback
+    - Authorized JavaScript Origins: http://localhost:8000
+    - Authorized Redirect URI: http://localhost:8000/api/auth/google/callback
 
   GitHub OAuth Setup:
     - Homepage URL: http://localhost:5173
-    - Authorization callback URL: http://localhost:5000/api/auth/github/callback
+    - Authorization callback URL: http://localhost:8000/api/auth/github/callback
 
 ================================================================================
 12. CHALLENGES FACED & SOLUTIONS
 ================================================================================
 
   Challenge 1: CORS errors on API calls
-  → Fixed by adding Vite proxy (/api → localhost:5000)
-    and changing axios baseURL from hardcoded to relative /api
+  → Fixed by adding Vite proxy (/api → localhost:8000)
+    and configuring django-cors-headers in settings.py
 
   Challenge 2: Gemini API model not found (1.5-flash unavailable)
   → Queried available models via ListModels API
@@ -401,18 +442,17 @@ Problem Statement:
   → AQ. keys require x-goog-api-key header instead of ?key= query param
     Updated service to use header-based authentication
 
-  Challenge 4: MongoDB not installed on Ubuntu 25.04
-  → Official MongoDB repo uses noble (24.04) packages
-    Recommended MongoDB Atlas as cloud alternative
+  Challenge 4: IPv6 vs IPv4 routing issues under certain network setups
+  → Enforced IPv4 socket connections in settings.py to bypass IPv6 network routing issues
 
   Challenge 5: Telegram posting to bot instead of channel
   → TELEGRAM_CHANNEL_ID was set to bot username
     Must be set to actual channel username (@channel)
     Bot must be added as Admin to that channel
 
-  Challenge 6: node-cron not publishing scheduled posts
-  → Root cause was invalid TELEGRAM_CHANNEL_ID
-    Scheduler itself was working correctly (verified via logs)
+  Challenge 6: Django scheduler loop stability
+  → Managed background processes running python manage.py run_scheduler
+    Added robust exception handling to keep scheduler alive on API failures
 
   Challenge 7: Google OAuth — invalid origin error
   → Authorized JavaScript Origins must not contain paths
@@ -444,15 +484,15 @@ Problem Statement:
 14. CONCLUSION
 ================================================================================
 
-  TeleSync successfully demonstrates a production-grade full-stack MERN
+  TeleSync successfully demonstrates a production-grade full-stack Django + React
   application with:
 
-  - Secure JWT authentication with email OTP verification
-  - OAuth 2.0 social login via Google and GitHub (Passport.js)
-  - Real-time background scheduling with node-cron
+  - Secure Django Simple JWT authentication with email OTP verification
+  - OAuth 2.0 social login via Google and GitHub (Custom Django views)
+  - Real-time background scheduling via a custom Django management loop
   - Third-party AI integration (Google Gemini 2.0 Flash)
-  - Telegram Bot API for automated post publishing
-  - Clean, modular MVC backend architecture
+  - Telegram Bot API, LinkedIn API, and Facebook API for multi-channel automated publishing
+  - Clean, modular Django Apps architecture
   - Responsive, dark-mode React frontend with Tailwind CSS
 
   The project covers modern full-stack development practices including

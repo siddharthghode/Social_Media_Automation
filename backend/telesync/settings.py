@@ -80,6 +80,8 @@ GITHUB_CLIENT_ID = os.environ.get('GITHUB_CLIENT_ID', '')
 GITHUB_CLIENT_SECRET = os.environ.get('GITHUB_CLIENT_SECRET', '')
 FACEBOOK_CLIENT_ID = os.environ.get('FACEBOOK_CLIENT_ID', '')
 FACEBOOK_CLIENT_SECRET = os.environ.get('FACEBOOK_CLIENT_SECRET', '')
+LINKEDIN_CLIENT_ID = os.environ.get('LINKEDIN_CLIENT_ID', '')
+LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET', '')
 CLIENT_URL = os.environ.get('CLIENT_URL', 'http://localhost:5173')
 
 # Email
@@ -101,4 +103,5 @@ BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

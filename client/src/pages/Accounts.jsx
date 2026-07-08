@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { BsPinterest } from 'react-icons/bs';
+import { BsPinterest, BsTelegram } from 'react-icons/bs';
 import {
   FiInstagram,
   FiLinkedin,
@@ -18,6 +18,7 @@ import {
 } from 'react-icons/fi';
 
 const platformDetails = {
+  telegram: { name: 'Telegram', icon: <BsTelegram className="text-sky-400" />, desc: 'Publish directly to Telegram channel' },
   instagram: { name: 'Instagram', icon: <FiInstagram className="text-pink-500" />, desc: 'Share photos and videos visually' },
   linkedin: { name: 'LinkedIn', icon: <FiLinkedin className="text-blue-500" />, desc: 'Connect with professionals & business' },
   twitter: { name: 'X / Twitter', icon: <FiTwitter className="text-gray-200" />, desc: 'Broadcast short updates' },
@@ -30,6 +31,37 @@ const Accounts = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState(null);
+
+  // Telegram Custom Connection
+  const [telegramBotToken, setTelegramBotToken] = useState('');
+  const [telegramChannelId, setTelegramChannelId] = useState('');
+  const [linkingTelegram, setLinkingTelegram] = useState(false);
+  const [showTelegramForm, setShowTelegramForm] = useState(false);
+
+  const handleLinkTelegram = async (e) => {
+    e.preventDefault();
+    if (!telegramBotToken.trim() || !telegramChannelId.trim()) {
+      toast.error('Both Bot Token and Channel ID are required');
+      return;
+    }
+    setLinkingTelegram(true);
+    try {
+      await api.post('/social/accounts/telegram/connect', {
+        botToken: telegramBotToken.trim(),
+        channelId: telegramChannelId.trim(),
+      });
+      toast.success('Telegram channel connected successfully!');
+      setShowTelegramForm(false);
+      setTelegramBotToken('');
+      setTelegramChannelId('');
+      fetchAccounts();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to connect Telegram channel');
+    } finally {
+      setLinkingTelegram(false);
+    }
+  };
 
   const fetchAccounts = async () => {
     try {
@@ -48,6 +80,11 @@ const Accounts = () => {
   }, []);
 
   const handleConnect = async (platform) => {
+    if (platform === 'telegram') {
+      setShowTelegramForm(true);
+      setShowModal(false);
+      return;
+    }
     setConnectingPlatform(platform);
     try {
       const { data } = await api.get(`/social/auth/url/${platform}`);
@@ -249,6 +286,83 @@ const Accounts = () => {
                     Cancel
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Telegram Connection Form Modal */}
+          {showTelegramForm && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-dark-800 border border-dark-700 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center p-5 border-b border-dark-700">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <BsTelegram className="text-sky-400" /> Link Telegram Bot & Channel
+                  </h3>
+                  <button onClick={() => setShowTelegramForm(false)} className="text-gray-400 hover:text-white transition-colors">
+                    <FiX size={20} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleLinkTelegram}>
+                  <div className="p-5 space-y-4">
+                    <p className="text-xs text-gray-400">
+                      To publish posts automatically, your bot must be added as an <strong>Administrator</strong> in your target channel.
+                    </p>
+
+                    {/* Bot Token Input */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                        Telegram Bot Token
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                        value={telegramBotToken}
+                        onChange={(e) => setTelegramBotToken(e.target.value)}
+                        className="w-full bg-dark-700 border border-dark-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                        required
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Obtain this from <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@BotFather</a> on Telegram.
+                      </p>
+                    </div>
+
+                    {/* Channel ID Input */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                        Channel ID or Username
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. @mychannel or -100123456789"
+                        value={telegramChannelId}
+                        onChange={(e) => setTelegramChannelId(e.target.value)}
+                        className="w-full bg-dark-700 border border-dark-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                        required
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Public channels use usernames (e.g. <code>@mychannel</code>). Private channels use numeric IDs (e.g. <code>-100xxxxxx</code>).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-dark-850 px-5 py-4 border-t border-dark-700 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowTelegramForm(false)}
+                      className="text-gray-400 hover:text-white text-sm px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={linkingTelegram}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      {linkingTelegram ? 'Connecting...' : 'Link Channel'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}
