@@ -44,13 +44,13 @@ const Register = () => {
           {/* OAuth Buttons */}
           <div className="space-y-3 mb-6">
             <a
-              href="/api/auth/google"
+              href="http://localhost:5000/api/auth/google"
               className="flex items-center justify-center gap-3 w-full border border-dark-600 hover:border-dark-500 hover:bg-dark-700 text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
             >
               <FcGoogle size={20} /> Continue with Google
             </a>
             <a
-              href="/api/auth/github"
+              href="http://localhost:5000/api/auth/github"
               className="flex items-center justify-center gap-3 w-full border border-dark-600 hover:border-dark-500 hover:bg-dark-700 text-white py-2.5 rounded-lg transition-colors text-sm font-medium"
             >
               <FiGithub size={18} /> Continue with GitHub

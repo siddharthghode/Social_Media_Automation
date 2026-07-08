@@ -1,12 +1,8 @@
 import axios from 'axios';
 
-<<<<<<< HEAD
-const api = axios.create({ baseURL: '/api' });
-=======
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
 });
->>>>>>> deploy
 
 // Attach access token to every request
 api.interceptors.request.use((config) => {

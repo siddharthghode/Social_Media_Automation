@@ -51,89 +51,131 @@ def run_scheduler():
     for post in due_posts:
         errors = []
         platforms = post.platforms if post.platforms else ['telegram']
-        telegram_platforms = [p for p in platforms if p == 'telegram']
-        facebook_platforms = [p for p in platforms if p == 'facebook']
 
-        if telegram_platforms:
+        for platform in platforms:
             try:
-                tg_account = Account.objects.filter(
-                    user=post.user, platform='telegram', status='connected'
+                account = Account.objects.filter(
+                    user=post.user, platform=platform, status='connected'
                 ).first()
-                custom_token = tg_account.access_token if tg_account else None
-                custom_chat = tg_account.zero_account_id if tg_account else None
 
-                if post.image_url:
-                    result = _send_telegram_image(
-                        post.image_url, post.content, bot_token=custom_token, chat_id=custom_chat
-                    )
+                is_mock = False
+                if account:
+                    if account.zero_account_id.startswith('mock_acc_'):
+                        is_mock = True
                 else:
-                    result = _send_telegram_message(
-                        post.content, bot_token=custom_token, chat_id=custom_chat
-                    )
-                post.telegram_message_id = str(result.get('result', {}).get('message_id', ''))
-                print(f'[Scheduler] Telegram published for post {post.pk}')
+                    if platform != 'telegram':
+                        raise Exception(f'No connected {platform} account found')
+
+                if platform == 'telegram':
+                    token = account.access_token if account else settings.TELEGRAM_BOT_TOKEN
+                    chat = account.zero_account_id if account else settings.TELEGRAM_CHANNEL_ID
+
+                    if not token or token.startswith('mock_') or not chat or chat.startswith('mock_'):
+                        is_mock = True
+
+                    if is_mock:
+                        print(f'[Scheduler] [MOCK] Telegram published for post {post.pk}')
+                    else:
+                        if post.image_url:
+                            result = _send_telegram_image(
+                                post.image_url, post.content, bot_token=token, chat_id=chat
+                            )
+                        else:
+                            result = _send_telegram_message(
+                                post.content, bot_token=token, chat_id=chat
+                            )
+                        post.telegram_message_id = str(result.get('result', {}).get('message_id', ''))
+                        print(f'[Scheduler] Telegram published for post {post.pk}')
+
+                elif platform == 'facebook':
+                    if is_mock:
+                        print(f'[Scheduler] [MOCK] Facebook published for post {post.pk}')
+                    else:
+                        if not account.access_token:
+                            raise Exception('Missing access token for Facebook account')
+                        url = f'https://graph.facebook.com/v19.0/{account.zero_account_id}/feed'
+                        requests.post(url, data={
+                            'message': post.content, 'access_token': account.access_token
+                        }, timeout=10).raise_for_status()
+                        print(f'[Scheduler] Facebook published for post {post.pk}')
+
+                elif platform == 'linkedin':
+                    if is_mock:
+                        print(f'[Scheduler] [MOCK] LinkedIn published for post {post.pk}')
+                    else:
+                        if not account.access_token:
+                            raise Exception('Missing access token for LinkedIn account')
+                        url = "https://api.linkedin.com/v2/posts"
+                        headers = {
+                            "Authorization": f"Bearer {account.access_token}",
+                            "Content-Type": "application/json",
+                            "X-Restli-Protocol-Version": "2.0.0"
+                        }
+                        payload = {
+                            "author": account.zero_account_id,
+                            "commentary": post.content,
+                            "visibility": "PUBLIC",
+                            "distribution": {
+                                "feedDistribution": "MAIN_FEED",
+                                "targetEntities": []
+                            },
+                            "lifecycleState": "PUBLISHED"
+                        }
+                        if post.image_url:
+                            payload["content"] = {
+                                "media": {
+                                    "title": "Image Asset",
+                                    "description": "Image shared via TeleSync"
+                                },
+                                "shareUrl": post.image_url
+                            }
+
+                        res = requests.post(url, json=payload, headers=headers, timeout=15)
+                        res.raise_for_status()
+                        print(f'[Scheduler] LinkedIn published for post {post.pk}')
+
+                elif platform == 'instagram':
+                    if is_mock:
+                        print(f'[Scheduler] [MOCK] Instagram published for post {post.pk}')
+                    else:
+                        if not account.access_token:
+                            raise Exception('Missing access token for Instagram account')
+                        if not post.image_url:
+                            raise Exception('Instagram posts require an image URL')
+
+                        # 1. Create media container
+                        media_url = f"https://graph.facebook.com/v19.0/{account.zero_account_id}/media"
+                        media_res = requests.post(media_url, data={
+                            'image_url': post.image_url,
+                            'caption': post.content,
+                            'access_token': account.access_token
+                        }, timeout=15)
+                        media_res.raise_for_status()
+                        creation_id = media_res.json().get('id')
+
+                        # 2. Publish media container
+                        publish_url = f"https://graph.facebook.com/v19.0/{account.zero_account_id}/media_publish"
+                        publish_res = requests.post(publish_url, data={
+                            'creation_id': creation_id,
+                            'access_token': account.access_token
+                        }, timeout=15)
+                        publish_res.raise_for_status()
+                        print(f'[Scheduler] Instagram published for post {post.pk}')
+
+                elif platform in ['twitter', 'pinterest']:
+                    if is_mock:
+                        print(f'[Scheduler] [MOCK] {platform.capitalize()} published for post {post.pk}')
+                    else:
+                        raise Exception(f'Real publishing not implemented for {platform.capitalize()}')
+
+                else:
+                    raise Exception(f'Unsupported platform: {platform}')
+
             except Exception as e:
-                errors.append(f'telegram: {e}')
-                print(f'[Scheduler] Telegram failed: {e}')
+                errors.append(f'{platform}: {str(e)}')
+                print(f'[Scheduler] {platform.capitalize()} failed: {str(e)}')
 
-        if facebook_platforms:
-            try:
-                fb_account = Account.objects.filter(
-                    user=post.user, platform='facebook', status='connected'
-                ).first()
-                if not fb_account:
-                    raise Exception('No connected Facebook account')
-                url = f'https://graph.facebook.com/v19.0/{fb_account.zero_account_id}/feed'
-                requests.post(url, data={
-                    'message': post.content, 'access_token': fb_account.access_token
-                }, timeout=10).raise_for_status()
-                print(f'[Scheduler] Facebook published for post {post.pk}')
-            except Exception as e:
-                errors.append(f'facebook: {e}')
-                print(f'[Scheduler] Facebook failed: {e}')
-
-        linkedin_platforms = [p for p in platforms if p == 'linkedin']
-        if linkedin_platforms:
-            try:
-                li_account = Account.objects.filter(
-                    user=post.user, platform='linkedin', status='connected'
-                ).first()
-                if not li_account:
-                    raise Exception('No connected LinkedIn account')
-
-                url = "https://api.linkedin.com/v2/posts"
-                headers = {
-                    "Authorization": f"Bearer {li_account.access_token}",
-                    "Content-Type": "application/json",
-                    "X-Restli-Protocol-Version": "2.0.0"
-                }
-                payload = {
-                    "author": li_account.zero_account_id,
-                    "commentary": post.content,
-                    "visibility": "PUBLIC",
-                    "distribution": {
-                        "feedDistribution": "MAIN_FEED",
-                        "targetEntities": []
-                    },
-                    "lifecycleState": "PUBLISHED"
-                }
-                if post.image_url:
-                    payload["content"] = {
-                        "media": {
-                            "title": "Image Asset",
-                            "description": "Image shared via TeleSync"
-                        },
-                        "shareUrl": post.image_url
-                    }
-
-                res = requests.post(url, json=payload, headers=headers, timeout=15)
-                res.raise_for_status()
-                print(f'[Scheduler] LinkedIn published for post {post.pk}')
-            except Exception as e:
-                errors.append(f'linkedin: {e}')
-                print(f'[Scheduler] LinkedIn failed: {e}')
-
-        total = len(telegram_platforms) + len(facebook_platforms) + len(linkedin_platforms)
+        total = len(platforms)
         if errors and len(errors) >= total:
             post.status = 'failed'
             post.error_message = ' | '.join(errors)
@@ -142,6 +184,7 @@ def run_scheduler():
             if errors:
                 post.error_message = 'Partial failure — ' + ' | '.join(errors)
         post.save()
+
 
 
 class Command(BaseCommand):

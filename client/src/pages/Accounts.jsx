@@ -115,12 +115,12 @@ const Accounts = () => {
     }
   };
 
-  // Sync with Zernio
+  // Sync with TeleSync
   const handleSync = async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/social/accounts/sync');
-      toast.success('Synced with Zernio!');
+      toast.success('Synced with TeleSync!');
       setAccounts(data);
     } catch (err) {
       console.error(err);
@@ -173,7 +173,7 @@ const Accounts = () => {
               <FiLink className="text-4xl text-gray-600 mb-3 animate-bounce" />
               <p className="text-lg font-semibold text-white">No accounts linked yet</p>
               <p className="text-sm text-gray-400 mt-1 max-w-sm">
-                Connect your social media profiles using Zernio to start automating your posting schedules.
+                Connect your social media profiles using TeleSync to start automating your posting schedules.
               </p>
               <button
                 onClick={() => setShowModal(true)}
