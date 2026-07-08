@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -13,7 +11,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
+    networks:
+      - telesync_net
+ 
   backend:
     build:
       context: ./backend
@@ -21,7 +21,10 @@ services:
     container_name: telesync_backend
     restart: always
     command: >
-      bash -c "python manage.py migrate &&
+      bash -c "echo 'Waiting for PostgreSQL...' &&
+               while ! nc -z db 5432; do sleep 1; done &&
+               echo 'PostgreSQL is ready, running migrations...' &&
+               python manage.py migrate &&
                gunicorn telesync.wsgi:application --bind 0.0.0.0:8000"
     ports:
       - "8000:8000"
@@ -31,13 +34,15 @@ services:
       - ./backend/.env
     environment:
       - POSTGRES_HOST=db
+    networks:
+      - telesync_net
 
   redis:
     image: redis:7-alpine
     container_name: telesync_redis
     restart: always
-    ports:
-      - "6379:6379"
+    networks:
+      - telesync_net
 
   celery_worker:
     build:
@@ -55,6 +60,8 @@ services:
       - POSTGRES_HOST=db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - telesync_net
 
   celery_beat:
     build:
@@ -72,6 +79,8 @@ services:
       - POSTGRES_HOST=db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - telesync_net
 
   client:
     build:
@@ -83,6 +92,12 @@ services:
       - "80:80"
     depends_on:
       - backend
+    networks:
+      - telesync_net
+
+networks:
+  telesync_net:
+    driver: bridge
 
 volumes:
   postgres_data:
