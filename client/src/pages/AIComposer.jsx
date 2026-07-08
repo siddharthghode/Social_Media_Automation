@@ -127,7 +127,7 @@ const AIComposer = () => {
       await api.post('/posts/create', {
         content: activeGeneration.content,
         imageUrl: activeGeneration.imageUrl || null,
-        scheduledTime,
+        scheduledTime: new Date(scheduledTime).toISOString(),
         platforms: selectedPlatforms,
       });
       toast.success('Generated post scheduled successfully!');

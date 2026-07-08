@@ -92,7 +92,7 @@ const Scheduler = () => {
       await api.post('/posts/create', {
         content,
         imageUrl: mediaUrl || null,
-        scheduledTime,
+        scheduledTime: new Date(scheduledTime).toISOString(),
         platforms: selectedPlatforms,
       });
       toast.success('Post scheduled successfully!');
