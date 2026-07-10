@@ -88,13 +88,31 @@ def run_scheduler():
                     if is_mock:
                         print(f'[Scheduler] [MOCK] Facebook published for post {post.pk}')
                     else:
-                        if not account.access_token:
-                            raise Exception('Missing access token for Facebook account')
-                        url = f'https://graph.facebook.com/v19.0/{account.zero_account_id}/feed'
-                        requests.post(url, data={
-                            'message': post.content, 'access_token': account.access_token
-                        }, timeout=10).raise_for_status()
-                        print(f'[Scheduler] Facebook published for post {post.pk}')
+                        if not settings.ZERNIO_API_KEY:
+                            raise Exception('Zernio API key is not configured')
+                        if not account.zero_account_id:
+                            raise Exception('Missing Zernio account ID for Facebook')
+
+                        payload = {
+                            "content": post.content,
+                            "platforms": [
+                                {
+                                    "platform": "facebook",
+                                    "accountId": account.zero_account_id
+                                }
+                            ],
+                            "publishNow": True
+                        }
+                        if post.image_url:
+                            payload["mediaUrls"] = [post.image_url]
+
+                        headers = {
+                            "Authorization": f"Bearer {settings.ZERNIO_API_KEY}",
+                            "Content-Type": "application/json"
+                        }
+                        res = requests.post("https://zernio.com/api/v1/posts", json=payload, headers=headers, timeout=15)
+                        res.raise_for_status()
+                        print(f'[Scheduler] Facebook published via Zernio for post {post.pk}')
 
                 elif platform == 'linkedin':
                     if is_mock:
@@ -135,29 +153,31 @@ def run_scheduler():
                     if is_mock:
                         print(f'[Scheduler] [MOCK] Instagram published for post {post.pk}')
                     else:
-                        if not account.access_token:
-                            raise Exception('Missing access token for Instagram account')
-                        if not post.image_url:
-                            raise Exception('Instagram posts require an image URL')
+                        if not settings.ZERNIO_API_KEY:
+                            raise Exception('Zernio API key is not configured')
+                        if not account.zero_account_id:
+                            raise Exception('Missing Zernio account ID for Instagram')
 
-                        # 1. Create media container
-                        media_url = f"https://graph.facebook.com/v19.0/{account.zero_account_id}/media"
-                        media_res = requests.post(media_url, data={
-                            'image_url': post.image_url,
-                            'caption': post.content,
-                            'access_token': account.access_token
-                        }, timeout=15)
-                        media_res.raise_for_status()
-                        creation_id = media_res.json().get('id')
+                        payload = {
+                            "content": post.content,
+                            "platforms": [
+                                {
+                                    "platform": "instagram",
+                                    "accountId": account.zero_account_id
+                                }
+                            ],
+                            "publishNow": True
+                        }
+                        if post.image_url:
+                            payload["mediaUrls"] = [post.image_url]
 
-                        # 2. Publish media container
-                        publish_url = f"https://graph.facebook.com/v19.0/{account.zero_account_id}/media_publish"
-                        publish_res = requests.post(publish_url, data={
-                            'creation_id': creation_id,
-                            'access_token': account.access_token
-                        }, timeout=15)
-                        publish_res.raise_for_status()
-                        print(f'[Scheduler] Instagram published for post {post.pk}')
+                        headers = {
+                            "Authorization": f"Bearer {settings.ZERNIO_API_KEY}",
+                            "Content-Type": "application/json"
+                        }
+                        res = requests.post("https://zernio.com/api/v1/posts", json=payload, headers=headers, timeout=15)
+                        res.raise_for_status()
+                        print(f'[Scheduler] Instagram published via Zernio for post {post.pk}')
 
                 elif platform in ['twitter', 'pinterest']:
                     if is_mock:

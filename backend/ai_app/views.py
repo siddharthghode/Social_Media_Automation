@@ -39,11 +39,37 @@ def _gemini_generate(prompt):
 
 
 def _pick_image(keywords):
+    if not keywords:
+        return DEFAULT_IMAGE
+
     kw = keywords.lower()
     for keys, url in UNSPLASH_IMAGES.items():
         if any(k in kw for k in keys):
             return url
+
+    # Fallback to dynamic image search via LoremFlickr
+    cleaned_keywords = keywords.replace('"', '').replace("'", "").strip()
+    # Handle sentences/topics if no commas are present
+    if ',' not in cleaned_keywords and ' ' in cleaned_keywords:
+        words = [w.strip() for w in cleaned_keywords.split() if len(w.strip()) > 3]
+        clean_kws = words[:3]
+    else:
+        clean_kws = [k.strip() for k in cleaned_keywords.split(',') if k.strip()]
+
+    if clean_kws:
+        query = ','.join(clean_kws)
+        try:
+            # We fetch with allow_redirects=True to get the final image URL directly.
+            # Timeout is set to 8 seconds to prevent hanging the Django response.
+            res = requests.get(f'https://loremflickr.com/800/600/{query}', timeout=8, allow_redirects=True)
+            res.raise_for_status()
+            if res.url and 'loremflickr.com' in res.url:
+                return res.url
+        except Exception as e:
+            print(f"[AI Image fallback] Failed to fetch dynamic image from loremflickr: {e}")
+
     return DEFAULT_IMAGE
+
 
 
 def _generate_mock_caption(topic, tone):
@@ -155,8 +181,9 @@ def generate_caption(request):
             )
             keywords = _gemini_generate(kw_prompt)
             media_url = _pick_image(keywords)
-        except Exception:
-            media_url = DEFAULT_IMAGE
+        except Exception as e:
+            print(f"[AI] Gemini keyword generation failed, falling back to topic keywords. Error: {e}")
+            media_url = _pick_image(topic)
 
     return Response({'caption': caption, 'mediaUrl': media_url})
 

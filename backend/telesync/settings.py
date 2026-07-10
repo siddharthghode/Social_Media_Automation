@@ -101,6 +101,8 @@ TELEGRAM_CHANNEL_ID = os.environ.get('TELEGRAM_CHANNEL_ID', '')
 # Gemini
 BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+ZERNIO_API_KEY = os.environ.get('ZERNIO_API_KEY', '')
+
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'

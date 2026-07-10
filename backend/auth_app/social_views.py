@@ -32,16 +32,31 @@ def disconnect_account(request, account_id):
 def generate_o_url(request, platform):
     state_token = jwt.encode({'user_id': request.user.id}, settings.SIMPLE_JWT['SIGNING_KEY'], algorithm='HS256')
 
-    if platform == 'instagram':
-        redirect_uri = f"{settings.BACKEND_URL}/api/social/auth/callback/instagram"
-        url = (
-            f"https://www.facebook.com/v19.0/dialog/oauth?"
-            f"client_id={settings.FACEBOOK_CLIENT_ID}&"
-            f"redirect_uri={redirect_uri}&"
-            f"state={state_token}&"
-            f"scope=instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,public_profile"
-        )
-        return Response({'url': url})
+    if platform in ['instagram', 'facebook']:
+        import requests
+        profile_id = _get_or_create_zernio_profile_id()
+        if not profile_id:
+            return Response({'message': 'Failed to initialize Zernio profile'}, status=500)
+
+        redirect_uri = f"{settings.BACKEND_URL}/api/social/auth/callback/zernio?state={state_token}&platform={platform}"
+        headers = {
+            "Authorization": f"Bearer {settings.ZERNIO_API_KEY}"
+        }
+        params = {
+            "profileId": profile_id,
+            "redirect_url": redirect_uri
+        }
+        try:
+            res = requests.get(f"https://zernio.com/api/v1/connect/{platform}", headers=headers, params=params, timeout=15)
+            res.raise_for_status()
+            auth_url = res.json().get("authUrl")
+            if not auth_url:
+                raise Exception("No authUrl returned from Zernio")
+            return Response({'url': auth_url})
+        except Exception as e:
+            print(f"[Zernio] Failed to generate connect URL for {platform}: {e}")
+            return Response({'message': f'Failed to generate connect URL from Zernio: {e}'}, status=500)
+
 
     elif platform == 'linkedin':
         redirect_uri = f"{settings.BACKEND_URL}/api/social/auth/callback/linkedin"
@@ -302,3 +317,82 @@ def linkedin_callback(request):
     )
 
     return redirect(f"{settings.CLIENT_URL}/accounts?success=linkedin_connected")
+
+
+def _get_or_create_zernio_profile_id():
+    import requests
+    headers = {
+        "Authorization": f"Bearer {settings.ZERNIO_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    # 1. Try to list profiles first
+    try:
+        res = requests.get("https://zernio.com/api/v1/profiles", headers=headers, timeout=10)
+        res.raise_for_status()
+        profiles = res.json().get("profiles", [])
+        if profiles:
+            return profiles[0].get("_id")
+    except Exception as e:
+        print(f"[Zernio] Failed to list profiles: {e}")
+
+    # 2. Try to create profile
+    try:
+        create_res = requests.post(
+            "https://zernio.com/api/v1/profiles",
+            headers=headers,
+            json={"name": "Default"},
+            timeout=10
+        )
+        create_res.raise_for_status()
+        created_data = create_res.json()
+        
+        pid = created_data.get("_id") or created_data.get("profileId")
+        if pid:
+            return pid
+            
+        # Fallback: list again
+        res = requests.get("https://zernio.com/api/v1/profiles", headers=headers, timeout=10)
+        res.raise_for_status()
+        profiles = res.json().get("profiles", [])
+        if profiles:
+            return profiles[0].get("_id")
+    except Exception as e:
+        print(f"[Zernio] Failed to create profile: {e}")
+
+    return None
+
+
+# GET /api/social/auth/callback/zernio
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def zernio_callback(request):
+    import requests
+    state_token = request.GET.get('state')
+    try:
+        payload = jwt.decode(state_token, settings.SIMPLE_JWT['SIGNING_KEY'], algorithms=['HS256'])
+        user = User.objects.get(pk=payload['user_id'])
+    except Exception:
+        return redirect(f"{settings.CLIENT_URL}/accounts?error=invalid_state")
+
+    platform = request.GET.get('platform', 'facebook')
+    account_id = request.GET.get('accountId')
+    username = request.GET.get('username') or f'{platform}_user'
+
+    if not account_id:
+        return redirect(f"{settings.CLIENT_URL}/accounts?error=missing_account_id")
+
+    # Create/update Account in database
+    Account.objects.update_or_create(
+        user=user,
+        platform=platform,
+        defaults={
+            'handle': username,
+            'zero_account_id': account_id,
+            'access_token': settings.ZERNIO_API_KEY,
+            'status': 'connected',
+            'avatar_url': f'https://api.dicebear.com/7.x/bottts/svg?seed={username}',
+        }
+    )
+
+    return redirect(f"{settings.CLIENT_URL}/accounts?success={platform}_connected")
+

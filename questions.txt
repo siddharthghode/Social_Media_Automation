@@ -1,0 +1,127 @@
+================================================================================
+                       PROJECT INFORMATION QUESTIONNAIRE
+                       Domain: Social Media Automation
+================================================================================
+
+Below are the 20 project details required for domain validation and architecture evaluation. 
+Based on our automatic analysis of the codebase, we have pre-filled several of these 
+details to save you time. 
+
+Please review, verify, and complete/correct the information where needed.
+
+--------------------------------------------------------------------------------
+
+1. Project Name
+   - [PRE-FILLED]: TeleSync (or Social Media Automation)
+   - [YOUR FEEDBACK / DETAILS]: 
+
+2. Problem Statement
+   - [PRE-FILLED]: Managing and posting consistently across multiple social media platforms manually is time-consuming, fragmented, and inefficient. Content creators and businesses lack a single unified tool to generate content with AI, schedule posts, and distribute them to platforms like Telegram, LinkedIn, Facebook, and Instagram.
+   - [YOUR FEEDBACK / DETAILS]: 
+
+3. Target Users
+   - [PRE-FILLED]: Content creators, social media managers, digital marketing agencies, startups, and community administrators (particularly Telegram channel owners).
+   - [YOUR FEEDBACK / DETAILS]: 
+
+4. Industry Domain
+   - [PRE-FILLED]: Social Media Management, Marketing Automation, AI-assisted Content Creation (SaaS).
+   - [YOUR FEEDBACK / DETAILS]: 
+
+5. Project Objectives
+   - [PRE-FILLED]:
+     * Provide a unified dashboard to manage multiple social media accounts.
+     * Use AI (Gemini) to generate and optimize posts, captions, and suggest content prompts.
+     * Enable automated scheduling and publishing using background queues.
+     * Reduce manual effort in content distribution.
+   - [YOUR FEEDBACK / DETAILS]: 
+
+6. Expected Outputs
+   - [PRE-FILLED]: A fully containerized web application comprising:
+     * Interactive frontend (React) for composing, managing accounts, and tracking stats.
+     * Backend API (Django) for managing posts, scheduling queues, and integrating APIs.
+     * Background workers (Celery + Redis) for scheduling execution.
+     * Automated publishes (Telegram, LinkedIn, Facebook, Instagram).
+   - [YOUR FEEDBACK / DETAILS]: 
+
+7. Existing Features
+   - [PRE-FILLED]:
+     * Authentication: JWT-based user register, login, OTP verification, forgot/reset password.
+     * Channels connected: Telegram (direct verification via bot token & channel ID), Facebook & Instagram (via Zernio API key), LinkedIn (OAuth callback and direct posts API).
+     * Post Composer: Write posts, select platforms, schedule date/time, upload image URL, track pending/posted/failed status.
+     * AI Composer: Uses Gemini (gemini-2.5-flash / gemini-2.0-flash) to write captions in various tones (funny, excited, professional, minimal, creative), extract stock image keywords, search stock images via LoremFlickr/Unsplash fallbacks, and generate 4 tailorable post prompts.
+     * Scheduler Queue: Celery Beat task checking every 60 seconds for due posts and auto-publishing them.
+     * Dashboard: Shows total posts, pending count, posted count, failed count, and connected account counts.
+   - [YOUR FEEDBACK / DETAILS]: 
+
+8. Future Features
+   - [PRE-FILLED]: Analytics (likes, shares, views), interactive calendar view, direct media uploading (local uploads instead of image URLs), multi-image posts, and custom posting templates.
+   - [YOUR FEEDBACK / DETAILS]: 
+
+9. Technology Stack
+   - [PRE-FILLED]:
+     * Frontend: React (Vite), Tailwind CSS, Recharts, React Router Dom, React Hot Toast, Axios.
+     * Backend: Django, Django REST Framework, SimpleJWT, Celery, Redis, Gunicorn.
+     * Infrastructure: Docker, Docker Compose, Nginx.
+   - [YOUR FEEDBACK / DETAILS]: 
+
+10. Database Used
+    - [PRE-FILLED]: PostgreSQL (with psycopg2-binary driver).
+    - [YOUR FEEDBACK / DETAILS]: 
+
+11. APIs or Third-Party Integrations
+    - [PRE-FILLED]:
+      * Telegram Bot API (sendMessage, sendPhoto, getMe, getChat).
+      * Zernio API (for Facebook and Instagram posts).
+      * LinkedIn API (v2 posts openid, profile, w_member_social).
+      * Google Gemini Developer API.
+      * LoremFlickr / Unsplash (for stock image matching).
+      * SMTP (for email verification and OTP).
+    - [YOUR FEEDBACK / DETAILS]: 
+
+12. AI/ML Models Used
+    - [PRE-FILLED]: Gemini models (`gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`) via Google's Generative Language API.
+    - [YOUR FEEDBACK / DETAILS]: 
+
+13. Datasets Used
+    - [PRE-FILLED]: No formal datasets; relies on LLM pre-trained knowledge and some static keyword mappings for stock photo routing.
+    - [YOUR FEEDBACK / DETAILS]: 
+
+14. Deployment Architecture
+    - [PRE-FILLED]: Local multi-container Docker Compose. Services:
+      * `db`: PostgreSQL
+      * `backend`: Django API via Gunicorn
+      * `redis`: Redis broker
+      * `celery_worker` & `celery_beat`: Celery tasks execution
+      * `client`: Vite/React app served via Nginx
+    - [YOUR FEEDBACK / DETAILS]: 
+
+15. User Workflow
+    - [PRE-FILLED]: Sign up -> Verify OTP -> Connect accounts -> Go to AI Composer or Create Post -> Insert topic & select tone -> Generate content & image -> Schedule post time -> Celery Beat triggers background task -> Post is published -> Dashboard reflects stats.
+    - [YOUR FEEDBACK / DETAILS]: 
+
+16. System Architecture Diagram (if available)
+    - [PRE-FILLED]: Currently represented in docker-compose network topologies and React-to-Django-to-Worker flows.
+    - [YOUR FEEDBACK / DETAILS]: 
+
+17. Folder Structure or Repository Structure
+    - [PRE-FILLED]:
+      * `/backend` (Django applications: auth_app, posts, ai_app, settings)
+      * `/client` (Vite, React sources: pages, components, context, services)
+      * Root files (`docker-compose.yml`, `start_all.sh`)
+    - [YOUR FEEDBACK / DETAILS]: 
+
+18. Performance Requirements
+    - [PRE-FILLED]: Responsive UI, fast caption generation (within 10s), accurate scheduling (within 60s beat interval).
+    - [YOUR FEEDBACK / DETAILS]: 
+
+19. Security Requirements
+    - [PRE-FILLED]: Password encryption via bcrypt, JWT state tokens for secure OAuth redirect handling, secret variables loaded from `.env` in container runtime, and email-based OTP verification.
+    - [YOUR FEEDBACK / DETAILS]: 
+
+20. Scalability Requirements
+    - [PRE-FILLED]: Scaling background post publications using multiple Celery worker containers; separate database layer.
+    - [YOUR FEEDBACK / DETAILS]: 
+
+================================================================================
+Please fill out or edit any details above, and let us know so we can execute Step 2 to Step 8.
+================================================================================

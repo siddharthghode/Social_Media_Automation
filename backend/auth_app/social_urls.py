@@ -7,7 +7,8 @@ from .social_views import (
     mock_callback,
     connect_telegram,
     instagram_callback,
-    linkedin_callback
+    linkedin_callback,
+    zernio_callback
 )
 
 urlpatterns = [
@@ -19,4 +20,6 @@ urlpatterns = [
     path('auth/callback/mock', mock_callback),
     path('auth/callback/instagram', instagram_callback),
     path('auth/callback/linkedin', linkedin_callback),
+    path('auth/callback/zernio', zernio_callback),
 ]
+

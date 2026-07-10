@@ -26,16 +26,33 @@ class SocialAuthTestCase(TestCase):
             "HTTP_AUTHORIZATION": f"Bearer {self.token}"
         }
 
-    def test_generate_o_url_instagram(self):
+    @patch("requests.get")
+    def test_generate_o_url_instagram(self, mock_get):
+        # Mock profile list response
+        mock_res_profile = MagicMock()
+        mock_res_profile.status_code = 200
+        mock_res_profile.json.return_value = {
+            "profiles": [{"_id": "mock_profile_id"}]
+        }
+
+        # Mock connect URL response
+        mock_res_connect = MagicMock()
+        mock_res_connect.status_code = 200
+        mock_res_connect.json.return_value = {
+            "authUrl": "https://zernio.com/api/v1/connect/instagram?profileId=mock_profile_id"
+        }
+
+        mock_get.side_effect = [mock_res_profile, mock_res_connect]
+
         response = self.client.get(
             "/api/social/auth/url/instagram",
             **self.headers
         )
         self.assertEqual(response.status_code, 200)
         url = response.json()["url"]
-        self.assertTrue(url.startswith("https://www.facebook.com/v19.0/dialog/oauth"))
-        self.assertIn(f"client_id={settings.FACEBOOK_CLIENT_ID}", url)
-        self.assertIn("scope=instagram_basic", url)
+        self.assertTrue(url.startswith("https://zernio.com/api/v1/connect/instagram"))
+        self.assertIn("profileId=mock_profile_id", url)
+
 
     def test_generate_o_url_mock(self):
         response = self.client.get(
@@ -170,3 +187,32 @@ class SocialAuthTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.endswith("/accounts?error=invalid_state"))
+
+    def test_zernio_callback_success(self):
+        state_token = jwt.encode(
+            {"user_id": self.user.id},
+            settings.SIMPLE_JWT["SIGNING_KEY"],
+            algorithm="HS256"
+        )
+
+        response = self.client.get(
+            f"/api/social/auth/callback/zernio?state={state_token}&platform=facebook&accountId=acc_fb_123&username=fb_test_page"
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.endswith("/accounts?success=facebook_connected"))
+
+        account = Account.objects.filter(user=self.user, platform="facebook").first()
+        self.assertIsNotNone(account)
+        self.assertEqual(account.handle, "fb_test_page")
+        self.assertEqual(account.zero_account_id, "acc_fb_123")
+        self.assertEqual(account.access_token, settings.ZERNIO_API_KEY)
+        self.assertEqual(account.status, "connected")
+
+    def test_zernio_callback_invalid_state(self):
+        response = self.client.get(
+            "/api/social/auth/callback/zernio?state=invalid_state_token&platform=facebook&accountId=acc_fb_123"
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.endswith("/accounts?error=invalid_state"))
+
