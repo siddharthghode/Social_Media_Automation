@@ -1,0 +1,47 @@
+========================================================================
+Social Media Automation (TeleSync) - Technology Stack
+========================================================================
+
+1. Frontend (Client)
+--------------------
+- React (v19.x) - UI Framework
+- Vite (v8.x) - Build Tool and Dev Server
+- Tailwind CSS (v3.x) - Styling Framework
+- React Router DOM (v7.x) - Client-side Routing
+- Axios (v1.x) - HTTP Client for API calls
+- Recharts (v3.x) - Charting and Data Visualization library
+- React Icons - Icon library
+- React Hot Toast - Notification/Toast library
+- Nginx - Web server (used in Docker to serve client files)
+- ESLint, PostCSS, Autoprefixer - Linting and styling build tools
+
+2. Backend
+----------
+- Python - Programming Language
+- Django (v4.2+) - Web Framework
+- Django REST Framework (DRF) - API Toolkit
+- Django REST Framework SimpleJWT - JSON Web Token (JWT) Authentication
+- Celery (v5.3+) - Distributed Task Queue (Background/Scheduled jobs)
+- Django CORS Headers - Cross-Origin Resource Sharing handling
+- Python Dotenv - Environment variable management
+- Bcrypt & PyJWT - Password hashing and token security libraries
+- Requests - HTTP client library
+
+3. Database & Cache
+-------------------
+- PostgreSQL (v15) - Relational Database
+- Redis (v7) - In-memory Database / Message Broker for Celery
+
+4. AI / Machine Learning
+------------------------
+- Google Gemini API (Generative Language API)
+  - Models queried: `gemini-2.0-flash`, `gemini-2.0-flash-lite`, `gemini-2.5-flash`
+  - Features powered: Automated caption generation (with tone customization), keyword extraction for media/image matching, and campaign/content prompt generation.
+- Mock/Rule-based Fallbacks - Custom keyword-based caption & tone generators
+- LoremFlickr API - Dynamic fallback visual search/image matching
+
+5. DevOps & Infrastructure
+--------------------------
+- Docker - Containerization
+- Docker Compose - Multi-container Docker Application Orchestration
+========================================================================

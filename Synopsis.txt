@@ -1,0 +1,110 @@
+SYNOPSIS
+
+Title: AI-Powered Social Media Automation System (TeleSync)
+
+1. Introduction
+
+Social media platforms have become essential for businesses, creators, and organizations to engage with their audience and promote products or services. Managing multiple social media accounts manually is time-consuming and requires continuous effort for content creation, scheduling, audience engagement, and performance analysis.
+
+The proposed system, TeleSync, aims to automate major social media activities using Artificial Intelligence and Modern Web Technologies. The system leverages Generative AI (via Google Gemini API) to compose captions and generate post prompts dynamically, and implements a background worker architecture (using Celery and Redis) to schedule and publish posts automatically across multiple networks, minimizing human effort and optimizing delivery.
+
+2. Problem Statement
+
+Managing multiple social media accounts requires significant human effort to create tailored content, post consistently, manage visual media, and execute publications across fragmented platforms. Small businesses, developers, and content creators often lack the dedicated resources to coordinate these workflows efficiently.
+
+An automated, central application that generates high-quality text and image pairings, maintains a calendar queue, and publishes automatically can reduce manual overhead, ensure scheduling consistency, and simplify cross-platform content strategy.
+
+3. Objectives
+- To automate social media caption and copy creation using Generative AI with specific tone controls.
+- To suggest campaign topics and post prompts based on user-defined industries/themes.
+- To schedule posts dynamically and manage a central calendar queue (Pending, Posted, Failed).
+- To publish content automatically using Telegram, LinkedIn, and Facebook/Instagram APIs.
+- To associate relevant visual assets with text using keyword-based stock photo selectors.
+- To secure user access with OTP verification and JWT-based authentication.
+
+4. Proposed System
+
+The TeleSync system consists of multiple integrated modules that work together to automate social media scheduling and writing operations:
+
+Module 1: AI Composer / Content Generator
+- Generates post captions, hashtags, and calls-to-action using Gemini LLMs.
+- Adapts text voice dynamically to several preset tones (Humorous, Creative, Professional, Excited, Minimalist).
+- Provides campaign content prompts tailored to specific industry themes.
+
+Module 2: Image & Media Association
+- Analyzes topics to generate key visual search tags using Gemini.
+- Dynamically pairs captions with relevant visual media using Unsplash and LoremFlickr integration.
+
+Module 3: Background Task Scheduler
+- Monitors scheduled posts continuously and executes publications at the precise UTC time.
+- Uses Celery workers and a Celery Beat heartbeat timer connected to a Redis message broker.
+
+Module 4: Multi-Platform Publishing Engine
+- Publishes text and photo posts directly to Telegram channels via the Telegram Bot API.
+- Publishes updates to LinkedIn feeds via the LinkedIn v2 API.
+- Publishes posts to Facebook and Instagram pages via Zernio API integration.
+
+Module 5: Management Dashboard & Auth
+- Handles secure login, registration, and OTP-based email verification.
+- Connects and monitors social media accounts and provides visual queues of past and upcoming posts.
+
+5. Methodology
+- User Registration & Authentication: User creates an account, verifies via email OTP, and logs in using JWT (JSON Web Tokens).
+- Social Connection: Users link their social accounts (Telegram, LinkedIn, Facebook, Instagram).
+- Content Drafting: Users compose posts manually or query the AI Composer. The AI model returns tailored captions and visual keywords.
+- Scheduling Queue: The post is saved in the PostgreSQL database with the designated UTC `scheduled_time` and target platforms.
+- Background Execution: A background Celery Beat worker runs a checking task every minute. It identifies due posts and invokes the worker.
+- Automatic API Dispatch: The scheduler calls target platform endpoints. If successful, the post status is set to `posted`; if it fails, error details are saved, and the status changes to `failed`.
+
+6. Technologies and Tools
+- Programming Languages: Python, JavaScript
+- Frontend: React.js (v19), Vite (v8), Tailwind CSS (v3), React Router DOM (v7), Axios, Recharts, React Hot Toast
+- Backend: Django (v4.2+), Django REST Framework (DRF)
+- Database: PostgreSQL (v15)
+- Cache & Message Broker: Redis (v7)
+- Background Task Runner: Celery (v5.3+), Celery Beat
+- AI/ML Integration: Google Gemini API (Models: `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`) via Python `requests`
+- External APIs:
+  - Telegram Bot API
+  - LinkedIn v2 API
+  - Zernio API (Unified Facebook & Instagram Publishing)
+  - Unsplash & LoremFlickr (Media generation/fallback)
+- DevOps & Infrastructure: Docker, Docker Compose, Nginx (Frontend Web Server)
+
+7. System Architecture
+
+User Input / Dashboard (React client)
+              ↓ (API Request)
+      Django Backend Server (Auth / Views)
+              ↓
+  +-----------+-----------+
+  |                       |
+  ↓                       ↓
+Gemini API           PostgreSQL Database (Posts/Users) & Redis (Broker)
+(Caption/Keywords)        ↓
+                     Celery Beat / Worker (Runs scheduler check minutely)
+                          ↓ (API Payload)
+                  External APIs (Telegram, LinkedIn, Zernio for FB/IG)
+                          ↓
+                 Social Media Channels
+
+8. Mathematical & AI Techniques Used
+- Generative Pre-trained Transformer (GPT) Architecture: Used by Gemini for semantic generation, natural language understanding, and zero-shot theme generation.
+- Prompt Engineering & JSON Schema Enforcement: Custom instructions mapping generated post prompts into strict JSON array strings for client-side parsing.
+- Pattern Matching and Text Similarity: Predefined rule-based classifiers and keywords for visual matching fallbacks.
+
+9. Expected Outcomes
+- Substantial reduction in manual overhead for scheduling and writing posts.
+- Improved posting consistency through automated background workers.
+- Dynamic caption and hashtag optimization aligned with custom brand voice.
+- Visual feedback on publishing status (real-time error and logs tracking).
+
+10. Future Scope
+- Automated comment monitoring and AI-powered comment replies.
+- Dynamic image and banner generation using Stable Diffusion or Imagen APIs.
+- Comprehensive engagement analytics charts and AI recommendation reports.
+- Extended OAuth integrations for self-hosted direct channel access.
+
+11. Conclusion
+
+The TeleSync AI-Powered Social Media Automation System simplifies multi-platform brand management by combining React, Django, Celery, and Google Gemini LLMs. By integrating generative copywriting, keyword-to-image mapping, automated scheduling, and direct API publication, the system offers an efficient, scalable tool for creators and businesses to maintain a strong, consistent online presence.
